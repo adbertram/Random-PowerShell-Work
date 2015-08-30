@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Invoice>
+  <InvoiceTitle>February Articles</InvoiceTitle>
+  <MyCompany>Adam Bertram</MyCompany>
+  <MyAddress>8616 Elizabeth Ln</MyAddress>
+  <MyCityState>Evansville, IN</MyCityState>
+  <MyZipcode>47725</MyZipcode>
+  <MyEmail>adbertram@gmail.com</MyEmail>
+  <MyPhoneNumber>812-453-3658</MyPhoneNumber>
+  <ClientCompany>1105 Media</ClientCompany>
+  <ClientName>Chris Paoli</ClientName>
+  <InvoiceNumber>02242015</InvoiceNumber>
+  <Date>2/24/2015</Date>
+  <TopNote>
+  </TopNote>
+  <BottomNote>
+  </BottomNote>
+  <Item>
+    <Description>Article</Description>
+    <Price>200</Price>
+    <Quantity>3</Quantity>
+  </Item>
+</Invoice>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice>
+  <InvoiceTitle></InvoiceTitle>
+  <MyCompany>Adam Bertram</MyCompany>
+  <MyAddress>555 Address Ln</MyAddress>
+  <MyCityState>MyCity, CA</MyCityState>
+  <MyZipcode>55555</MyZipcode>
+  <MyEmail>myemail@gmail.com</MyEmail>
+  <MyPhoneNumber>555-444-3333</MyPhoneNumber>
+  <ClientCompany></ClientCompany>
+  <ClientName></ClientName>
+  <InvoiceNumber></InvoiceNumber>
+  <Date></Date>
+  <TopNote></TopNote>
+  <BottomNote></BottomNote>
+</Invoice>
