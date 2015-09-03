@@ -207,12 +207,12 @@ process
 	try
 	{
 		$DnsRecordQueryParams = @{
-			'Computername' = $DnsServer
+			'Computername' = 'genomichealth.com'
 			'Class' = 'MicrosoftDNS_AType'
 			'Namespace' = 'root\MicrosoftDNS'
 		}
 		$DnsNodeObjectQueryParams = @{
-			'SearchBase' = "DC=$Zone,CN=MicrosoftDNS,DC=$IntegrationScope<code>DnsZones,$DomainDn"
+			'SearchBase' = "CN=MicrosoftDNS,DC=$IntegrationScope`DnsZones,$DomainDn"
 		}
 		
 		if ($Name)
@@ -226,7 +226,7 @@ process
 			## No specific record was chosen so we'll look through the whole zone
 			Write-Log "No name specified. Will process all records in the zone '$Zone'"
 			$DnsNodeObjectQueryParams.Filter = " objectClass -eq 'dnsNode' "
-			$DnsRecordQueryParams.Filter = "ContainerName = '$Zone' AND Timestamp <> 0 AND OwnerName <> 'hosp.uhhg.org'"
+			$DnsRecordQueryParams.Filter = "ContainerName = '$Zone' AND Timestamp <> 0 AND OwnerName <> '$Zone'"
 		}
 		
 		## Find all dynamic DNS records in the zone.  The output has to be trimmed to 15 characters to make a match on the AD object below
