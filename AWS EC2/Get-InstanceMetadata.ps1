@@ -1,67 +1,40 @@
-function Get-InstanceMetadata
+﻿function Get-EC2InstanceMetadata
 {
 	<#	
 	.SYNOPSIS
-		This function queries AWS's URL and recursively gathers all of the instance meta-data. This function is meant to be executed
+		This function queries AWS's URL to gather instance meta-data. This function is meant to be executed
 		from a EC2 instance as the URI that exposes the metadata is not available elsewhere.
 	.EXAMPLE
-		PS> Get-InstanceMetadata
+		PS> Get-EC2InstanceMetadata -Path 'public-hostname'
 	
-		This example would send a HTTP request to http://169.254.169.254/latest/meta-data, gather the results, build child URIs
-		from the results and recursively query those URIs until each branch is finished.
-			
-	.PARAMETER Uri
+		This example would query the URL http://169.254.169.254/latest/meta-data/public-hostname and return the page's result.
+	
+	.PARAMETER Path
+		The URL path to the metadata item you'd like to retrieve.
+	
+	.PARAMETER BaseUri
 		The URI that Amazon publishes to expose instance metadata.
-		
-	.INPUTS
-		None. You cannot pipe objects to Get-InstanceMetadata.
-
-	.OUTPUTS
-		System.Management.Automation.PSCustomObject.
 	#>
 	[CmdletBinding()]
 	[OutputType('System.Management.Automation.PSCustomObject')]
 	param
 	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$Path,
+		
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$Uri = 'http://169.254.169.254/latest/meta-data'
+		[string]$BaseUri = 'http://169.254.169.254/latest/meta-data'
 	)
 	
-	try
+	$Uri = "$BaseUri/$Path"
+	Write-Verbose -Message "Invoking HTTP request for URI [$($Uri)]"
+	$result = Invoke-WebRequest -Uri $Uri
+	if ($result.StatusCode -ne 200)
 	{
-		Write-Verbose -Message "Invoking HTTP request for URI [$($Uri)]"
-		$result = Invoke-WebRequest -Uri $Uri
-		if ($result.StatusCode -ne 200)
-		{
-			throw "The HTTP request failed when looking up URI [$Uri]"
-		}
-		
-		$childMeta = $result.Content.Split("`n")	
-		
-		foreach ($c in $childMeta)
-		{
-			try {
-				$childUri = "$Uri/$c"
-				if ($c -notlike "*$($Uri | Split-Path -Leaf)*")
-				{
-					[pscustomobject]@{
-						'Name' = ($Uri | Split-Path -Leaf)
-						'Value' = $c
-					}
-					Get-InstanceMetadata -Uri $childUri
-				}
-			}
-			catch 
-			{
-				Write-Warning $_.Exception.Message
-			}
-		}
+		throw "The HTTP request failed when looking up URI [$Uri]"
 	}
-	catch
-	{
-		$PSCmdlet.ThrowTerminatingError($_)
-	}
+	
+	$result.Content.Split("`n")
 }
-
-Get-InstanceMetadata
