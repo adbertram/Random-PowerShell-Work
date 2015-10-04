@@ -21,86 +21,75 @@
 [CmdletBinding()]
 param
 (
-	
-	[Parameter()]
+	[Parameter(Mandatory)]
 	[ValidateNotNullOrEmpty()]
-	[string[]]$ComputerName = 'localhost'
-	
+	[string]$GPO
 )
-begin
-{
-	function Get-EventLabel
-	{
-		param (
-			[int]$EventId
-		)
-		$SessionEvents.where({ $_.ID -eq $EventId }).Label
-	}	
-}
-process
-{
-	try
-	{
-		
-		#region Defie all of the events to indicate session start or top
-		$SessionEvents = @(
-			@{ 'Label' = 'Logon'; 'LogName' = 'Security'; 'ID' = 4624 } ## Advanced Audit Policy --> Audit Logon
-			@{ 'Label' = 'Logoff'; 'LogName' = 'Security'; 'ID' = 4647 } ## Advanced Audit Policy --> Audit Logoff
-			@{ 'Label' = 'Startup'; 'LogName' = 'System'; 'ID' = 6005 }
-			@{ 'Label' = 'Shutdown'; 'LogName' = 'System'; 'ID' = 6006 }
-			@{ 'Label' = 'RdpSessionReconnect'; 'LogName' = 'Security'; 'ID' = 4778 } ## Advanced Audit Policy --> Audit Other Logon/Logoff Events
-			@{ 'Label' = 'RdpSessionDisconnect'; 'LogName' = 'Security'; 'ID' = 4779 } ## Advanced Audit Policy --> Audit Other Logon/Logoff Events
-			@{ 'Label' = 'Locked'; 'LogName' = 'Security'; 'ID' = 4800 } ## Advanced Audit Policy --> Audit Other Logon/Logoff Events
-			@{ 'Label' = 'Unlocked'; 'LogName' = 'Security'; 'ID' = 4801 } ## Advanced Audit Policy --> Audit Other Logon/Logoff Events
-		)
-		
-		$SessionStartIds = ($SessionEvents | where { $_.Label -in 'Logon', 'RdpSessionReconnect', 'Unlocked' }).ID
-		## Startup ID will be used for events where the computer was powered off abruptly or crashes --not a great measurement
-		$SessionStopIds = ($SessionEvents | where { $_.Label -in 'Logoff', 'Startup', 'Shutdown', 'RdpSessionDisconnect', 'Locked' }).ID
-		#endregion
-		
 
-		$evtParams = @{
-			'FilterHashTable' = @{
-				'LogName' = $SessionEvents.LogName | select -Unique
-				'ID' = $SessionEvents.ID
-			}
-		}
-		
-		foreach ($computer in $ComputerName)
+try
+{
+	
+	#region Defie all of the events to indicate session start or top
+	$script:SessionEvents = @(
+		@{ 'Label' = 'Logon'; 'EventType' = 'SessionStart'; 'LogName' = 'Security'; 'ID' = 4624 } ## Advanced Audit Policy --> Audit Logon
+		@{ 'Label' = 'Logoff'; 'EventType' = 'SessionStop'; 'LogName' = 'Security'; 'ID' = 4647 } ## Advanced Audit Policy --> Audit Logoff
+		@{ 'Label' = 'Startup'; 'EventType' = 'SessionStop'; 'LogName' = 'System'; 'ID' = 6005 }
+		@{ 'Label' = 'RdpSessionReconnect'; 'EventType' = 'SessionStart'; 'LogName' = 'Security'; 'ID' = 4778 } ## Advanced Audit Policy --> Audit Other Logon/Logoff Events
+		@{ 'Label' = 'RdpSessionDisconnect'; 'EventType' = 'SessionStop'; 'LogName' = 'Security'; 'ID' = 4779 } ## Advanced Audit Policy --> Audit Other Logon/Logoff Events
+		@{ 'Label' = 'Locked'; 'EventType' = 'SessionStop'; 'LogName' = 'Security'; 'ID' = 4800 } ## Advanced Audit Policy --> Audit Other Logon/Logoff Events
+		@{ 'Label' = 'Unlocked'; 'EventType' = 'SessionStart'; 'LogName' = 'Security'; 'ID' = 4801 } ## Advanced Audit Policy --> Audit Other Logon/Logoff Events
+	)
+	
+	$SessionStartIds = ($SessionEvents | where { $_.EventType -eq 'SessionStart' }).ID
+	## Startup ID will be used for events where the computer was powered off abruptly or crashes --not a great measurement
+	$SessionStopIds = ($SessionEvents | where { $_.EventType -eq 'SessionStop' }).ID
+	#endregion
+	
+	Write-Verbose -Message "Querying Active Directory for GPO [$($GPO)]"
+	if (-not ([xml]$xGPO = Get-GPOReport -Name $GPO -ReportType XML -ErrorAction SilentlyContinue -ErrorVariable err))
+	{
+		throw $err
+	}
+	$ouPaths = $xGPO.GPO.LinksTo.SOMPath
+	foreach ($o in $ouPaths)
+	{
+		$oSplit = $o.Split('/')
+		$dSplit = $oSplit[0].Split('.')
+		$oSplit = $oSplit[1..$oSplit.Length]
+		$ou = "OU=$($oSplit -join ',OU='),DC=$($dSplit -join ',DC=')"
+		Write-Verbose -Message "Gathering up all computers in the [$($ou)] OU"
+		$computers = Get-ADComputer -SearchBase $ou -Filter { Enabled -eq $true }
+		foreach ($c in $computers)
 		{
 			try
 			{
-				Write-Verbose -Message "Gathering up all interesting events on computer [$($computer)]. This may take a bit..."
-				$Events = Get-WinEvent @evtParams -ComputerName $computer -Oldest | where {
-					## This is hackery but because no one event ID matches up to an interactive logon certain things have to be
-					## filtered on to match the pattern.
-					if ($_.Id -eq $SessionEvents.where({$_.Label -eq 'Logon'}).ID)
-					{
-						$xEvt = [xml]$_.ToXml()
-						($xEvt.Event.EventData.Data | where { $_.Name -eq 'LogonType' }).'#text' -eq '2' -and
-						($xEvt.Event.EventData.Data | where { $_.Name -eq 'LogonGuid' }).'#text' -ne '{00000000-0000-0000-0000-000000000000}' -and
-						($xEvt.Event.EventData.Data | where { $_.Name -eq 'ProcessName' }).'#text' -match 'winlogon\.exe'
-					}
-					else
-					{
-						$true	
-					}
-				}
+				$computer = $c.Name
+				Write-Verbose -Message "Querying event log(s) of computer [$($computer)]"
+				$logNames = ($SessionEvents.LogName | select -Unique)
+				$ids = $SessionEvents.Id
 				
-				Write-Verbose -Message "Found [$($Events.Count)] events to look through"
+				## Build the insane XPath query for the security event log in order to query events as fast as possible
+				$logonXPath = "Event[System[EventID=4624]] and Event[EventData[Data[@Name='TargetDomainName'] != 'Window Manager']] and Event[EventData[Data[@Name='TargetDomainName'] != 'NT AUTHORITY']] and (Event[EventData[Data[@Name='LogonType'] = '2']] or Event[EventData[Data[@Name='LogonType'] = '11']])"
+				$otherXpath = 'Event[System[({0})]]' -f "EventID=$(($ids.where({ $_ -ne '4624' })) -join ' or EventID=')"
+				$xPath = '({0}) or ({1})' -f $logonXPath, $otherXpath
 				
-				$Events.foreach({
+				$events = Get-WinEvent -ComputerName $computer -LogName $logNames -FilterXPath $xPath
+				Write-Verbose -Message "Found [$($events.Count)] events to look through"
+				
+				$events.foreach({
 					if ($_.Id -in $SessionStartIds)
 					{
-						$Id = $_.Id
-						Write-Verbose -Message "Session start event ID is [$($Id)]"
+						$logonEvtId = $_.Id
 						$xEvt = [xml]$_.ToXml()
-						$Username = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'SubjectUserName' }).'#text'
+						$Username = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetUserName' }).'#text'
 						$LogonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text'
-						Write-Verbose -Message "Session start logon ID is [$($LogonId)]"
+						if (-not $LogonId)
+						{
+							$LogonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'LogonId' }).'#text'
+						}
 						$LogonTime = $_.TimeCreated
-						Write-Verbose -Message "Session start time is [$($LogonTime)]"
+						
+						Write-Verbose -Message "New session start event found: event ID [$($logonEvtId)] username [$($Username)] logonID [$($LogonId)] time [$($LogonTime)]"
 						$SessionEndEvent = $Events.where({
 							$_.TimeCreated -gt $LogonTime -and
 							$_.ID -in $SessionStopIds -and
@@ -108,27 +97,27 @@ process
 						}) | select -First 1
 						if (-not $SessionEndEvent) ## This be improved by seeing if this is the latest logon event
 						{
-							Write-Verbose -Message "Could not find a session end event for logon ID [$($LogonId)]. Assuming most current"
-							$LogoffTime = Get-Date
+							#Write-Verbose -Message "Could not find a session end event for logon ID [$($LogonId)]. Assuming most current"
+							Write-Warning "Could not find session end event"
+							#$LogoffTime = Get-Date
 						}
 						else
 						{
 							$LogoffTime = $SessionEndEvent.TimeCreated
 							Write-Verbose -Message "Session stop ID is [$($SessionEndEvent.Id)]"
-							Write-Verbose -Message "Session stop time: [$($LogoffTime)] by event [$(Get-EventLabel -EventId $SessionEndEvent.Id)]"
+							$LogoffId = $SessionEndEvent.Id
+							$output = [ordered]@{
+								'ComputerName' = $_.MachineName
+								'Username' = $Username
+								'StartTime' = $LogonTime
+								'StartAction' = $SessionEvents.where({ $_.ID -eq $logonEvtId }).Label
+								'StopTime' = $LogoffTime
+								'StopAction' = $SessionEvents.where({ $_.ID -eq $LogoffID }).Label
+								'Session Active (Days)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalDays, 2)
+								'Session Active (Min)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalMinutes, 2)
+							}
+							[pscustomobject]$output
 						}
-						$LogoffId = $SessionEndEvent.Id
-						$output = [ordered]@{
-							'ComputerName' = $_.MachineName
-							'Username' = $Username
-							'StartTime' = $LogonTime
-							'StartAction' = Get-EventLabel -EventId $LogonId
-							'StopTime' = $LogoffTime
-							'StopAction' = Get-EventLabel -EventId $LogoffId
-							'Session Active (Days)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalDays, 2)
-							'Session Active (Min)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalMinutes, 2)
-						}
-						[pscustomobject]$output
 					}
 				})
 			}
@@ -137,10 +126,9 @@ process
 				Write-Error $_.Exception.Message
 			}
 		}
-		
 	}
-	catch
-	{
-		Write-Error $_.Exception.Message
-	}
+}
+catch
+{
+	$PSCmdlet.ThrowTerminatingError($_)
 }
