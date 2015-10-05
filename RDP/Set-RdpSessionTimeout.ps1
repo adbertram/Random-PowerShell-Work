@@ -43,7 +43,7 @@
 		$setParams = @{
 			'Path' = $baseRegKey
 			'Name' = $valueName
-			'Value' = ($Timeout * 1000)
+			'Value' = (($Timeout * 60) * 1000)
 		}
 		
 		$icmParams = @{
