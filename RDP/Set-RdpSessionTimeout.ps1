@@ -53,7 +53,10 @@
 		{
 			$icmParams.Credential = $Credential
 		}
-		Invoke-Command @icmParams -ScriptBlock { Set-ItemProperty @using:setParams }
+		Invoke-Command @icmParams -ScriptBlock {
+			Set-ItemProperty @using:setParams
+			Get-Service -Name termservice | Restart-Service -Force
+		}
 	}
 	catch
 	{
