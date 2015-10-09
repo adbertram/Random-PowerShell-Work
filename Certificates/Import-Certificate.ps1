@@ -80,15 +80,12 @@
 					[Parameter()]
 					[string]$StoreName
 				)
-				$cert = Get-Item $FilePath
-				$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $cert
-				foreach ($s in $StoreName)
-				{
-					$x509Store = New-Object System.Security.Cryptography.X509Certificates.X509Store $s, $Location
-					$x509Store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-					$x509Store.Add($cert)
-					$x509Store.Close()
-				}
+				$certcoll = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2Collection
+				$certcoll.Import($FilePath)
+				$x509Store = New-Object System.Security.Cryptography.X509Certificates.X509Store $StoreName, $Location
+				$x509Store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+				$x509Store.AddRange($certcoll)
+				$x509Store.Close()
 			}
 			$sbArgs = $FilePath, $Location, $StoreName
 			if (Test-LocalComputer -ComputerName $ComputerName)
