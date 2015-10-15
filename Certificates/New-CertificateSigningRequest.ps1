@@ -3,50 +3,55 @@
 #region function New-CertificateSigningRequest
 function New-CertificateSigningRequest
 {
-	<#
-		.SYNOPSIS
-			This function creates a certificate signing request (CSR) based on various parameters passed to it. It was built to provide
-			an easy way to create CSRs without the need for IIS or Exchange.
+		<#
+	.SYNOPSIS
+		This function creates a certificate signing request (CSR) based on various parameters passed to it. It was built to provide
+		an easy way to create CSRs without the need for IIS or Exchange.
+
+		The primary functionality is done with certreq.exe. The bulk of the function simply provides an intuitive interface
+		for building the INF to pass to the certreq.exe utility.
+
+	.PARAMETER SubjectHost
+		This is the container name in the subject. It will be concatenated to the end of SubjectBasePath when the INF
+		file is created.
+
+	.PARAMETER FilePath
+		The file path where you'd like to place the resulting certificate signing request file.  It should end in a .req
+		extension.
 	
-			The primary functionality is done with certreq.exe. The bulk of the function simply provides an intuitive interface
-			for building the INF to pass to the certreq.exe utility.
-	
-		.PARAMETER SubjectHost
-			This is the container name in the subject. It will be concatenated to the end of SubjectBasePath when the INF
-			file is created.
-	
-		.PARAMETER FilePath
-			The file path where you'd like to place the resulting certificate signing request file.  It should end in a .req
-			extension.
-	
-		.PARAMETER SubjectBasePath
-			This is a string that mimics the typical Country, state, city, organization, etc needed to create a CSR. By default,
-			it is in a distinguished name format.
-	
-		.PARAMETER PrivateKeyNotExportable
-			By default, the INF file is configured to allow the private key to be exported. Use this to override that.
-	
-		.PARAMETER KeyLength
-			The key length of the certificate that will be created from this CSR. You may choose 1024, 2048, 4096, 8192 or 16384.
-	
-		.PARAMETER KeyUsage
-			Any combination of the usage strings of 'Digital Signature','Key Encipherment','Non Repudiation','Data Encipherment',
-			'Key Agreement','Key Cert Sign','Offline CRL','CRL Sign','Encipher Only'. These values will be added together to form
-			their hex equivalent and placed into the INF file.
-	
-			This defaults to 'Digital Signature' and 'Key Encipherment'.
-	
-		.PARAMETER ProviderName
-			They key provider to use. This defaults to Microsoft RSA SChannel Cryptographic Provider.
-	
-		.PARAMETER CertReqFilePath
-			The file path to the certreq.exe file. Since this function relies on this file the path is defined here. This defaults
-			to C:\Windows\System32\certreq.exe
-	
-		.EXAMPLE
-			New-CertificateSigningRequest -SubjectHost myhost.local -FilePath C:\mycsr.req
-	
-			This example would create a C:\mycsr.req file.
+	.PARAMETER ComputerName
+		This is the computername in which the resulting certificate created from this CSR will be placed. The INF file used
+		for certreq.exe will be created locally, however, it will then be copied to this computer and generated on there
+		in order to be able to be imported once the certificate is built.
+
+	.PARAMETER SubjectBasePath
+		This is a string that mimics the typical Country, state, city, organization, etc needed to create a CSR. By default,
+		it is in a distinguished name format.
+
+	.PARAMETER PrivateKeyNotExportable
+		By default, the INF file is configured to allow the private key to be exported. Use this to override that.
+
+	.PARAMETER KeyLength
+		The key length of the certificate that will be created from this CSR. You may choose 1024, 2048, 4096, 8192 or 16384.
+
+	.PARAMETER KeyUsage
+		Any combination of the usage strings of 'Digital Signature','Key Encipherment','Non Repudiation','Data Encipherment',
+		'Key Agreement','Key Cert Sign','Offline CRL','CRL Sign','Encipher Only'. These values will be added together to form
+		their hex equivalent and placed into the INF file.
+
+		This defaults to 'Digital Signature' and 'Key Encipherment'.
+
+	.PARAMETER ProviderName
+		They key provider to use. This defaults to Microsoft RSA SChannel Cryptographic Provider.
+
+	.PARAMETER CertReqFilePath
+		The file path to the certreq.exe file. Since this function relies on this file the path is defined here. This defaults
+		to C:\Windows\System32\certreq.exe
+
+	.EXAMPLE
+		New-CertificateSigningRequest -SubjectHost myhost.local -FilePath C:\mycsr.req
+
+		This example would create a C:\mycsr.req file.
 	#>
 	[OutputType('System.IO.FileInfo')]
 	[CmdletBinding()]
@@ -62,10 +67,14 @@ function New-CertificateSigningRequest
 		[ValidateScript({ -not (Test-Path -Path $_ -PathType Leaf) })]
 		[string]$FilePath,
 		
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$ComputerName,
+		
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$SubjectBasePath = 'C=US,S=California,L=Redwood City,O=GenomicHealth, Inc.,OU=IT,CN=',
-		
+		[string]$SubjectBasePath = 'C=US,S=California,L=Redwood City,O=Genomic Health, Inc.,OU=IT,CN=',
+
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
 		[switch]$PrivateKeyNotExportable,
