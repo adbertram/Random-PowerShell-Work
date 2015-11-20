@@ -32,7 +32,26 @@
 	
 		This example would create a JSON file in C:\ that looks like this:
 	
-		-------------
+		[
+		    {
+		        "FirstName":  "Adam"
+		    },
+		    {
+		        "LastName":  "Bertram"
+		    },
+		    {
+		        "Address":  "7684 Shoe Dr."
+		    },
+		    {
+		        "City":  "Chicago"
+		    },
+		    {
+		        "State":  "IN"
+		    },
+		    {
+		        "ZipCode":  "65729"
+		    }
+		]
 
 	.INPUTS
 		System.Data.DataRow
@@ -75,7 +94,7 @@
 				{
 					$null = $items.Add([PSCustomObject]@{$p.Name = $p.Value })
 				}
-				$items | ConvertTo-Json
+				$items | ConvertTo-Json | Out-File -Append -FilePath $Path
 			}
 		}
 		catch
