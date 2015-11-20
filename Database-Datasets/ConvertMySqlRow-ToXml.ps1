@@ -51,11 +51,7 @@
 		System.IO.FileInfo
 
 	.LINK
-		about_functions_advanced
-
-	.LINK
-		about_comment_based_help
-
+		https://github.com/adbertram/Random-PowerShell-Work/blob/master/Database-Datasets/ConvertMySqlRow-ToXml.ps1
 	#>	
 	
 	[CmdletBinding()]
