@@ -1,12 +1,75 @@
 ﻿function ConvertMySqlRow-ToXml
 {
+	<#
+	.SYNOPSIS
+		This function converts a [System.Data.DataRow] object output from the MySQL module and creates a XML file from it.
+
+	.DESCRIPTION
+		The purpose of this function is to accept input from a MySQL database row, create a XML file and transform each
+		MySQL column name into a XML node name.  Each row's value will then turn into the XML node's value. Once created, it
+		will output the XML file.
+
+	.PARAMETER Row
+		A [System.Data.DataRow] that will typically be output from the Invoke-MySqlQuery cmdlet inside the MySQL module. This can
+		be a single row or multiple rows separated by a comma.  This parameter also accepts pipeline input.
+
+	.PARAMETER ObjectType
+		Each row will be a child of this XML parent node. For example, if your MySQL row contains information about a user,
+		a good ObjectType will be User. This is the template object that all rows are a part of.
+
+	.EXAMPLE
+		PS> Invoke-MySqlQuery -Query 'select * from users'
+
+		UserID    : 1
+		FirstName : Adam
+		LastName  : Bertram
+		Address   : 7684 Shoe Dr.
+		City      : Chicago
+		State     : IN
+		ZipCode   : 65729
+
+		PS> Invoke-MySqlQuery -Query 'select * from users' | ConvertMySqlRow-ToXml -ObjectType User -Path C:\users.xml
+	
+		This example would create a XML file in C:\ that looks like this:
+	
+		<?xml version="1.0"?>
+		<Users>
+			<User>
+				<FirstName>Adam</FirstName>
+				<LastName>Bertram</LastName>
+				<Address>7684 Shoe Dr.</Address>
+				<City>Chicago</City>
+				<State>IN</State>
+				<ZipCode>65729</ZipCode>
+			</User>
+		</Users>
+
+	.INPUTS
+		System.Data.DataRow
+
+	.OUTPUTS
+		System.IO.FileInfo
+
+	.LINK
+		about_functions_advanced
+
+	.LINK
+		about_comment_based_help
+
+	#>	
+	
 	[CmdletBinding()]
+	[OutputType('System.IO.FileInfo')]
 	param
 	(
 		[Parameter(Mandatory,ValueFromPipeline)]
 		[ValidateNotNullOrEmpty()]
 		[System.Data.DataRow[]]$Row,
-	
+		
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$ObjectType,
+		
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[ValidatePattern('\.xml$')]
@@ -15,42 +78,39 @@
 	)
 	begin {
 		$ErrorActionPreference = 'Stop'
+		
+		$xmlWriter = New-Object System.XMl.XmlTextWriter($Path, $Null)
+		$xmlWriter.Formatting = 'Indented'
+		$xmlWriter.Indentation = 1
+		$XmlWriter.IndentChar = "`t"
+		$xmlWriter.WriteStartDocument()
+		$xmlWriter.WriteStartElement('{0}s' -f $ObjectType)
 	}
 	process {
 		try
 		{
-			$xmlWriter = New-Object System.XMl.XmlTextWriter($Path, $Null)
-			$xmlWriter.Formatting = 'Indented'
-			$xmlWriter.Indentation = 1
-			$XmlWriter.IndentChar = "`t"
-			$xmlWriter.WriteStartDocument()
-			$xmlWriter.WriteComment('This is a list of all the users necessary for whatever app to use.')
-			$xmlWriter.WriteStartElement('Users')
-			
 			foreach ($r in $row)
 			{
-				$xmlWriter.WriteStartElement('User')
-				$xmlWriter.WriteAttributeString('VIN', '123567891')
-				
+				$properties = $r.psobject.Properties.where{ $_.Value -is [string] -and $_.Name -ne 'RowError' }
+				$xmlWriter.WriteStartElement($ObjectType)
+				foreach ($prop in $properties)
+				{
+					Write-Verbose -Message "Adding attribute name [$($prop.Name)] with value [$($prop.Value)]"
+					$xmlWriter.WriteElementString($prop.Name, $prop.Value)
+				}
 				$xmlWriter.WriteEndElement()
 			}
-			
-			## End the Users element
-			$xmlWriter.WriteEndElement()
-			
-			
-			
-			<User FirstName="" LastName="" Address="" City="" State="" ZipCode="" />
 		}
 		catch
 		{
 			Write-Error $_.Exception.Message
 		}
-		finally
-		{
-			$xmlWriter.WriteEndDocument()
-			$xmlWriter.Flush()
-			$xmlWriter.Close()
-		}
+	}
+	end
+	{
+		$xmlWriter.WriteEndDocument()
+		$xmlWriter.Flush()
+		$xmlWriter.Close()
+		Get-Item -Path $Path
 	}
 }
