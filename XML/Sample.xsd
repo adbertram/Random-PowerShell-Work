@@ -1,0 +1,24 @@
+﻿<xs:schema attributeFormDefault="unqualified"  elementFormDefault="qualified"  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element  name="Cards">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Card"  maxOccurs="unbounded" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Player">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element  type="xs:string" name="Name"/>
+										<xs:element  type="xs:string" name="Team"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element  type="xs:float" name="Year"/>
+							<xs:element  type="xs:string" name="CardCompany"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
