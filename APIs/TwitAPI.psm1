@@ -1,6 +1,8 @@
-﻿# TODO: Get App ID and API Key from: https://twit-tv.3scale.net/
-$appid = 'a200b818'
-$appkey = 'b6e048dc42ec55effd1c3b81471340c4'
+﻿## CREDIT: Module originally created by Sarah Dutkiewicz (http://sadukie.com)
+
+# TODO: Get App ID and API Key from: https://twit-tv.3scale.net/
+$appid = 'APPID'
+$appkey = 'APPKEY'
 
 # Setup some headers for consuming the TWiT API RESTfully
 $acceptheader = 'application/json'
