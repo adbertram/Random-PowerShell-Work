@@ -72,7 +72,7 @@
 		{
 			$ErrorActionPreference = 'Stop'
 			
-			if (-not (Get-Module -Name Pscx -ListAvailable))
+			if (-not (Get-Module -Name Pscx -ListAvailable) -and (-not (Get-Module -Name Pscx -ListAvailable)))
 			{
 				throw "The PowerShell Community Extensions module is not installed. This module can be downloaded at https://pscx.codeplex.com/releases."
 			}
