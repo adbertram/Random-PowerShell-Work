@@ -58,7 +58,7 @@
 	
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[ValidateScript({ Test-Path -Path ($_ | Split-Path -Parent) -PathType Leaf })]
+		[ValidateScript({ Test-Path -Path ($_ | Split-Path -Parent) -PathType Container })]
 		[ValidatePattern('\.xsd$')]
 		[string]$SchemaFilePath = "$($XmlFilePath | Split-Path -Parent)\$([System.IO.Path]::GetFileNameWithoutExtension($XmlFilePath)).xsd",
 	
