@@ -1,20 +1,20 @@
-﻿function ConvertMySqlRow-ToXml
+﻿function ConvertDataRow-ToXml
 {
 	<#
 	.SYNOPSIS
-		This function converts a [System.Data.DataRow] object output from the MySQL module and creates a XML file from it.
+		This function converts a [System.Data.DataRow] object output and creates a XML file from it.
 
 	.DESCRIPTION
-		The purpose of this function is to accept input from a MySQL database row, create a XML file and transform each
-		MySQL column name into a XML node name.  Each row's value will then turn into the XML node's value. Once created, it
+		The purpose of this function is to accept one or more database rows, create a XML file and transform each
+		row column name into a XML node name.  Each row's value will then turn into the XML node's value. Once created, it
 		will output the XML file.
 
 	.PARAMETER Row
-		A [System.Data.DataRow] that will typically be output from the Invoke-MySqlQuery cmdlet inside the MySQL module. This can
-		be a single row or multiple rows separated by a comma.  This parameter also accepts pipeline input.
+		A [System.Data.DataRow] that will typically be output from the Invoke-MySqlQuery or perhaps the Invoke-SqlQuery cmdlet. 
+		This can be a single row or multiple rows separated by a comma.  This parameter also accepts pipeline input.
 
 	.PARAMETER ObjectType
-		Each row will be a child of this XML parent node. For example, if your MySQL row contains information about a user,
+		Each row will be a child of this XML parent node. For example, if your data row contains information about a user,
 		a good ObjectType will be User. This is the template object that all rows are a part of.
 
 	.EXAMPLE
@@ -28,7 +28,7 @@
 		State     : IN
 		ZipCode   : 65729
 
-		PS> Invoke-MySqlQuery -Query 'select * from users' | ConvertMySqlRow-ToXml -ObjectType User -Path C:\users.xml
+		PS> Invoke-MySqlQuery -Query 'select * from users' | ConvertDataRow-ToXml -ObjectType User -Path C:\users.xml
 	
 		This example would create a XML file in C:\ that looks like this:
 	
@@ -51,7 +51,7 @@
 		System.IO.FileInfo
 
 	.LINK
-		https://github.com/adbertram/Random-PowerShell-Work/blob/master/Database-Datasets/ConvertMySqlRow-ToXml.ps1
+		https://github.com/adbertram/Random-PowerShell-Work/blob/master/Database-Datasets/ConvertDataRow-ToXml.ps1
 	#>	
 	
 	[CmdletBinding()]
