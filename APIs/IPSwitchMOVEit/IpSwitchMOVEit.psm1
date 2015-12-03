@@ -1,5 +1,61 @@
 ﻿# https://moveitsupport.ipswitch.com/SUPPORT/micentralapiwin/online-manual.htm
 
+function Connect-MOVEitCentral
+{
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[pscredential]$Credential,
+		
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[string]$ComputerName = $env:COMPUTERNAME
+	)
+	
+	try
+	{
+		if (-not (Test-MOVEitApiInstall))
+		{
+			throw 'The MOVEit COM API was not found. Is it installed?'
+		}
+		
+		Write-Verbose -Message "Attempting connection to the host [$($ComputerName)] using username [$($Credential.UserName)]"
+		$global:connection = New-Object -ComObject MICentralAPICOM.MICentralAPI
+		$global:connection.SetHost($ComputerName)
+		$connection.SetUser($Credential.UserName)
+		$connection.SetPassword($Credential.GetNetworkCredential().Password)
+		if (-not $connection.Connect())
+		{
+			throw
+		}
+		else
+		{
+			$connection
+		}
+	}
+	catch
+	{
+		Resolve-MOVEitError
+	}
+}
+
+function Disconnect-MOVEitCentral
+{
+	[CmdletBinding()]
+	param
+	()
+	try
+	{
+		$Connection.Disconnect()
+	}
+	catch
+	{
+		Write-Error $_.Exception.Message
+	}
+}
+
 function Get-MOVEitApiVersion
 {
 	[CmdletBinding()]
@@ -64,66 +120,22 @@ function Test-MOVEitApiInstall
 	}
 }
 
-function Connect-MOVEitCentral
-{
-	[CmdletBinding()]
-	param
-	(
-		[Parameter()]
-		[ValidateNotNullOrEmpty()]
-		[string]$ComputerName = $env:COMPUTERNAME,
-		
-		[Parameter()]
-		[ValidateNotNullOrEmpty()]
-		[pscredential]$Credential
-	)
-	
-	try
-	{
-		if (-not (Test-MOVEitApiInstall))
-		{
-			throw 'The MOVEit COM API was not found. Is it installed?'
-		}
-		
-		$global:connection = New-Object -ComObject MICentralAPICOM.MICentralAPI
-		$connection.SetHost($ComputerName)
-		$connection.SetUser($Credential.UserName)
-		$connection.SetPassword($Credential.GetNetworkCredential().Password)
-		if (-not $connection.Connect())
-		{
-			throw $connection.GetErrorDescription()
-		}
-	}
-	catch
-	{
-		Write-Error $_.Exception.Message
-	}	
-}
-
-function Disconnect-MOVEitCentral
-{
-	[CmdletBinding()]
-	param
-	()
-	try
-	{
-		$Connection.Disconnect()
-	}
-	catch
-	{
-		Write-Error $_.Exception.Message
-	}
-}
-
 function Get-Task
 {
-	[CmdletBinding()]
+	[CmdletBinding(DefaultParameterSetName = 'None')]
 	param
 	(
+		[Parameter(Mandatory, ParameterSetName = 'ById')]
+		[ValidateNotNullOrEmpty()]
+		[string]$TaskId,
+		
+		[Parameter(Mandatory, ParameterSetName = 'ByName')]
+		[ValidateNotNullOrEmpty()]
+		[string]$TaskName,
+	
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[ValidateSet('Running')]
-		[string]$Type
+		[switch]$Running
 		
 	)
 	begin {
@@ -132,30 +144,134 @@ function Get-Task
 	process {
 		try
 		{
-			if ($Type -eq 'Running')
+			if ($Running.IsPresent)
 			{
-				$connection.ShowRunningTasks()
-#				Sub DumpTaskStatus(oAPI, StatusXML, iii)
-#				ShowMsg "===== " & oAPI.GetValue(StatusXML, "TaskName", iii) & _
-#				" (" & _
-#				oAPI.GetValue(StatusXML, "TaskID", iii)  & _
-#				") ====="
-#				ShowMsg "=  Started : " & oAPI.GetValue(StatusXML, "TimeStarted", iii) & _
-#				" (" & _
-#				oAPI.GetValue(StatusXML, "StartedBy", iii)  & _
-#				")"
-#				Dim ShortStatus
-#				ShortStatus = oAPI.GetValue(StatusXML, "Status", iii)
-#				if Len(ShortStatus) > 50 then ShortStatus = Mid(ShortStatus, 1, 50) & "..."
-#				ShowMsg "=  Status  : " & ShortStatus
-#				if oAPI.GetValue(StatusXML, "TotFileBytes", iii) > 0 then
-#				ShowMsg "=  Transfer: " & oAPI.GetValue(StatusXML, "CurFileBytes", iii) & _
-#				" of " & _
-#				oAPI.GetValue(StatusXML, "TotFileBytes", iii)  & _
-#				" bytes"
-#				end if
-#				End Sub
+				$response = [xml]$connection.ShowRunningTasks()
+				
+				$xPath = '/Response/Output/Tasks/Task'
+				if ($PSCmdlet.ParameterSetName -eq 'ById')
+				{
+					$xPath += "[TaskID=$TaskId]"
+				}
+				elseif ($PSCmdlet.ParameterSetName -eq 'ByName')
+				{
+					$xPath += "[TaskName=$TaskName]"
+				}
+				
+				$response.SelectNodes($xPath)
 			}		
+		}
+		catch
+		{
+			Write-Error $_.Exception.Message
+		}
+	}
+}
+
+function Start-Task
+{
+	[CmdletBinding(DefaultParameterSetName = 'None')]
+	param
+	(
+		[Parameter(Mandatory, ParameterSetName = 'ById')]
+		[ValidateNotNullOrEmpty()]
+		[string]$TaskId,
+		
+		[Parameter(Mandatory, ParameterSetName = 'ByName')]
+		[ValidateNotNullOrEmpty()]
+		[string]$TaskName,
+		
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[object[]]$Parameter,
+		
+		## This should be a collection of TaskParameter objects --could be PSCustomObjects
+		
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[switch]$Wait,
+		
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[int]$Timeout = 30
+	)
+	try
+	{
+		if ($PSCmdlet.ParameterSetName -eq 'ByName')
+		{
+			Write-Verbose -Message "Attempting to start task [$($TaskName)] by name."
+			$params = $TaskName, 1 ## Use 1 for $true to represent passing a name instead of an ID
+		}
+		elseif ($PSCmdlet.ParameterSetName -eq 'ById')
+		{
+			Write-Verbose -Message "Attempting to start task [$($TaskID)] by ID."
+			$params = $TaskId, 0
+		}
+		if ($PSBoundParameters.ContainsKey('Parameter'))
+		{
+			Write-Warning -Message 'The Parameter parameter is not implemented yet.'
+			##$params += $Parameter
+		}
+		else
+		{
+			$params += ''
+		}
+		
+		$task = $connection.StartTask($params[0], $params[1], $params[2])
+		if (-not $task)
+		{
+			Resolve-MOVEitError
+		}
+		elseif ($Wait.IsPresent)
+		{
+			if ($PSCmdlet.ParameterSetName -eq 'ByName')
+			{
+				$TaskId = [regex]::Match($task, '(^\d+)\^').Groups[1].Value
+			}
+			Wait-Task -TaskId $TaskId -Timeout $Timeout
+		}
+	}
+	catch
+	{
+		Write-Error $_.Exception.Message
+	}
+}
+
+function Wait-Task
+{
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory, ValueFromPipelineByPropertyName)]
+		[ValidateNotNullOrEmpty()]
+		[string]$TaskId,
+		
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[int]$Timeout = 10
+	)
+	begin
+	{
+		$ErrorActionPreference = 'Stop'
+	}
+	process
+	{
+		try
+		{
+			$timer = [system.diagnostics.stopwatch]::startNew()
+			Write-Verbose -Message "Waiting for task ID [$($TaskId)] to finish."
+			while ((Get-Task -Running -TaskId $TaskId) -and ($timer.Elapsed.TotalSeconds -lt $Timeout))
+			{
+				Start-Sleep -Seconds 1
+			}
+			if ($timer.Elapsed.TotalSeconds -ge $Timeout)
+			{
+				Write-Warning -Message "Operation timed out while waiting for task ID [$($TaskId)]"
+			}
+			else
+			{
+				Write-Verbose -Message "Task ID [$($TaskId)] has completed."
+			}
 		}
 		catch
 		{
