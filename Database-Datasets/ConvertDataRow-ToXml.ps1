@@ -1,4 +1,6 @@
-﻿function ConvertDataRow-ToXml
+﻿#Requires -Version 4
+
+function ConvertDataRow-ToXml
 {
 	<#
 	.SYNOPSIS
