@@ -1,4 +1,47 @@
-﻿function Write-Log
+﻿function Start-Log
+{
+	<#
+	.SYNOPSIS
+		This function creates the initial log file and sets a few global variables
+		that are common among the session.  Call this function at the very top of your
+		installer script.
+
+	.PARAMETER  FilePath
+		The file path where you'd like to place the log file on the file system.  If no file path
+		specified, it will create a file in the system's temp directory named the same as the script
+		which called this function with a .log extension.
+
+	.EXAMPLE
+		PS C:\> Start-Log -FilePath 'C:\Temp\installer.log
+
+	.NOTES
+
+	#>
+	[CmdletBinding()]
+	param (
+		[ValidateScript({ Split-Path $_ -Parent | Test-Path })]
+		[string]$FilePath = "$(Get-SystemTempFolderPath)\$((Get-Date -f 'MM-dd-yyyy (hhmm tt)') + 'Software.log')"
+	)
+	
+	try
+	{
+		if (!(Test-Path $FilePath))
+		{
+			## Create the log file
+			New-Item $FilePath -Type File | Out-Null
+		}
+		
+		## Set the global variable to be used as the FilePath for all subsequent Write-Log
+		## calls in this session
+		$global:ScriptLogFilePath = $FilePath
+	}
+	catch
+	{
+		Write-Error $_.Exception.Message
+	}
+}
+
+function Write-Log
 {
 	<#
 	.SYNOPSIS
