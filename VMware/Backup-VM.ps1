@@ -1,5 +1,28 @@
 ﻿function Backup-VM
 {
+	<#
+	.SYNOPSIS
+		This function takes input from Get-VM, checks if a VM is online and if so, shuts it down. Once shut down, it will then export
+		the VM to the path specified in the FolderPath parameter. It will then bring the VM back up when done.	
+	
+	.EXAMPLE
+		PS> Get-VM | Backup-VM -FolderPath C:\VMBackups
+	
+		This example backs up all VMs returned by Get-VM and create OVA files with the VM names in the C:\VMBackups folder.
+		
+	.PARAMETER VM
+		A VM object that represents the VM to be backed up. This can be populated via Get-VM or by providing any number of
+		VMware.VimAutomation.ViCore.Impl.V1.Inventory.VirtualMachineImpl objects separated by a comma.
+	
+	.PARAMETER FolderPath
+		The path to where the VM's OVA file will be created.
+	
+	.INPUTS
+		VMware.VimAutomation.ViCore.Impl.V1.Inventory.VirtualMachineImpl
+	
+	.OUTPUTS
+		None.
+	#>
 	[CmdletBinding(SupportsShouldProcess)]
 	param
 	(
@@ -11,15 +34,7 @@
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[ValidateScript({ Test-Path -Path $_ -PathType Container })]
-		[string]$FolderPath,
-		
-		[Parameter()]
-		[ValidateNotNullOrEmpty()]
-		[string]$Server,
-		
-		[Parameter()]
-		[ValidateNotNullOrEmpty()]
-		[pscredential]$Credential
+		[string]$FolderPath
 	)
 	process
 	{
