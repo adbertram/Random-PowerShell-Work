@@ -207,7 +207,7 @@ process
 	try
 	{
 		$DnsRecordQueryParams = @{
-			'Computername' = 'genomichealth.com'
+			'Computername' = $DnsServer
 			'Class' = 'MicrosoftDNS_AType'
 			'Namespace' = 'root\MicrosoftDNS'
 		}
