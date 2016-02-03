@@ -82,7 +82,7 @@ begin
 	
 	function Set-DsAclOwner ([Microsoft.ActiveDirectory.Management.ADObject]$AdObject, [string]$Identity, [string]$NetbiosDomainName)
 	{
-		$User = New-Object System.Security.Principal.NTAccount($NetbiosDomainName, "$Identity</code>$")
+		$User = New-Object System.Security.Principal.NTAccount($NetbiosDomainName, "$Identity$")
 		$Acl.SetOwner($User)
 		Set-Acl -Path "ActiveDirectory:://RootDSE/$($AdObject.DistinguishedName)" -AclObject $Acl
 	}
