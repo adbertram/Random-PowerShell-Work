@@ -56,7 +56,7 @@ try
 		$oSplit = $o.Split('/')
 		$dSplit = $oSplit[0].Split('.')
 		$oSplit = $oSplit[1..$oSplit.Length]
-		$ou = "OU=$($oSplit -join ',OU='),DC=$($dSplit -join ',DC=')"
+		$ou = "OU=$([array]::Reverse($oSplit) -join ',OU='),DC=$($dSplit -join ',DC=')"
 		Write-Verbose -Message "Gathering up all computers in the [$($ou)] OU"
 		$computers = Get-ADComputer -SearchBase $ou -Filter { Enabled -eq $true }
 		foreach ($c in $computers)
