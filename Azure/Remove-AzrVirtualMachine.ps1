@@ -45,11 +45,24 @@ function Remove-AzrVirtualMachine
 		try
 		{
 			$scriptBlock = {
+				param ($VMName,
+					
+					$ResourceGroupName)
 				$commonParams = @{
-					'Name' = $using:VMName;
-					'ResourceGroupName' = $using:ResourceGroupName
+					'Name' = $VMName;
+					'ResourceGroupName' = $ResourceGroupName
 				}
 				$vm = Get-AzureRmVm @commonParams
+				
+				Write-Verbose -Message 'Stopping VM...'
+				$vm | Stop-AzureRmVM -Force
+				
+				## Remove the OS disk
+				Write-Verbose -Message 'Removing OS disk...'
+				$osDiskName = $vm.StorageProfile.OSDisk.VirtualHardDisk.Uri.Split('/')[-1]
+				Remove-AzureRmVMDataDisk -VM $vm -DataDiskNames $osDiskName | Update-AzureRmVM
+				
+				## Remove any other attached disks
 				if ($vm.DataDiskNames.Count -gt 0)
 				{
 					Write-Verbose -Message 'Removing data disks...'
@@ -63,14 +76,14 @@ function Remove-AzrVirtualMachine
 			
 			if ($Wait.IsPresent)
 			{
-				& $scriptBlock
+				& $scriptBlock -VMName $VMName -ResourceGroupName $ResourceGroupName
 			}
 			else
 			{
 				$initScript = {
 					$null = Login-AzureRmAccount -Credential (Get-KeyStoreCredential -Name 'Azure svcOrchestrator')
 				}
-				Start-Job -ScriptBlock $scriptBlock -InitializationScript $initScript
+				Start-Job -ScriptBlock $scriptBlock -InitializationScript $initScript -ArgumentList @($VMName, $ResourceGroupName)
 			}
 		}
 		catch
