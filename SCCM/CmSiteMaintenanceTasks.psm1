@@ -25,9 +25,9 @@
 		[Alias('ItemName')]
 		[ValidateSet('Enabled', 'Disabled')]
 		[string]$Status,
-		[string]$SiteServer = 'CONFIGMANAGER',
+		[string]$SiteServer = '<SITESERVER>',
 		[ValidateLength(3, 3)]
-		[string]$SiteCode = 'UHP'
+		[string]$SiteCode = '<SITECODE>'
 	)
 	
 	process {
