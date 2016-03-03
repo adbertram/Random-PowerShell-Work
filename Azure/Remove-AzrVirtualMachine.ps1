@@ -54,24 +54,27 @@ function Remove-AzrVirtualMachine
 				}
 				$vm = Get-AzureRmVm @commonParams
 				
-				Write-Verbose -Message 'Stopping VM...'
-				$vm | Stop-AzureRmVM -Force
+				Write-Verbose -Message 'Removing the Azure VM...'
+				$vm | Remove-AzureRmVM -Force
+				Write-Verbose -Message 'Removing the Azure network interface...'
+				$vm | Remove-AzureRmNetworkInterface -Force
 				
 				## Remove the OS disk
 				Write-Verbose -Message 'Removing OS disk...'
-				$osDiskName = $vm.StorageProfile.OSDisk.VirtualHardDisk.Uri.Split('/')[-1]
-				Remove-AzureRmVMDataDisk -VM $vm -DataDiskNames $osDiskName | Update-AzureRmVM
+				$osDiskUri = $vm.StorageProfile.OSDisk.VirtualHardDisk.Uri
+				$osDiskStorageAcct = Get-AzureRmStorageAccount -Name $osDiskUri.Split('/')[2].Split('.')[0]
+				$osDiskStorageAcct | Remove-AzureStorageBlob -Container $osDiskUri.Split('/')[-2] -Blob $osDiskUri.Split('/')[-1] -ea Ignore
 				
 				## Remove any other attached disks
 				if ($vm.DataDiskNames.Count -gt 0)
 				{
 					Write-Verbose -Message 'Removing data disks...'
-					$vm | Remove-AzureRmVMDataDisk | Update-AzureRmVM
+					foreach ($uri in $vm.StorageProfile.DataDisks.VirtualHardDisk.Uri)
+					{
+						$dataDiskStorageAcct = Get-AzureRmStorageAccount -Name $uri.Split('/')[2].Split('.')[0]
+						$dataDiskStorageAcct | Remove-AzureStorageBlob -Container $uri.Split('/')[-2] -Blob $uri.Split('/')[-1] -ea Ignore
+					}
 				}
-				Write-Verbose -Message 'Removing the Azure VM...'
-				$vm | Remove-AzureRmVM -Force
-				Write-Verbose -Message 'Removing the Azure network interface...'
-				$vm | Remove-AzureRmNetworkInterface -Force
 			}
 			
 			if ($Wait.IsPresent)
