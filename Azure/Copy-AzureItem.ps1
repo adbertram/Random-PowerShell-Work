@@ -20,6 +20,9 @@ function Copy-AzureItem
 	
 	.PARAMETER ResourceGroupName
 		The name of the resource group the storage account is in.
+        
+    .PARAMETER BlobType
+        The blob type to create when the file gets to Azure.
 	
 	.PARAMETER StorageAccountName
 		The name of the storage account the container that will hold the file is in.
@@ -36,6 +39,10 @@ function Copy-AzureItem
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[string]$ContainerName,
+        
+        [Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$BlobType = 'Page',
 		
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
