@@ -39,9 +39,10 @@ function Copy-AzureItem
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[string]$ContainerName,
-        
-        [Parameter(Mandatory)]
+		
+		[Parameter()]
 		[ValidateNotNullOrEmpty()]
+		[ValidateSet('Page', 'Block')]
 		[string]$BlobType = 'Page',
 		
 		[Parameter(Mandatory)]
