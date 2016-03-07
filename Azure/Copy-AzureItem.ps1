@@ -39,6 +39,14 @@
 		[ValidateNotNullOrEmpty()]
 		[string]$ContainerName,
 		
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$ResourceGroupName,
+		
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$StorageAccountName,
+		
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
 		[string]$DestinationName,
@@ -46,15 +54,7 @@
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
 		[ValidateSet('Page', 'Block')]
-		[string]$BlobType = 'Page',
-		
-		[Parameter()]
-		[ValidateNotNullOrEmpty()]
-		[string]$ResourceGroupName = 'IT-DevOps',
-		
-		[Parameter()]
-		[ValidateNotNullOrEmpty()]
-		[string]$StorageAccountName = 'pinf01stg02'
+		[string]$BlobType = 'Page'
 	)
 	begin
 	{
