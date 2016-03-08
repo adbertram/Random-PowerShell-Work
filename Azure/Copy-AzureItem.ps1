@@ -69,24 +69,32 @@
 				'Name' = $StorageAccountName
 			}
 			
-			$scParams = @{
-				'Container' = $ContainerName
+			$storageContainer = Get-AzureRmStorageAccount @saParams | Get-AzureStorageContainer -Container $ContainerName
+			
+			if (-not $PSBoundParameters.ContainsKey('DestinationName'))
+			{
+				$DestinationName = $FilePath | Split-Path -Leaf
 			}
 			
-			$bcParams = @{
-				'File' = $FilePath
-				'BlobType' = $BlobType
-			}
-			if ($PSBoundParameters.ContainsKey('DestinationName'))
+			## Use Add-AzureRmVhd if the file is a VHD. Set-AzureStorageBlobContent is known to corrupt the large VHD when uploading
+			if ($FilePath.EndsWith('.vhd'))
 			{
-				$bcParams.Blob = $DestinationName
+				$vhdParams = @{
+					'ResourceGroupName' = $ResourceGroupName
+					'Destination' = "$($storageContainer.Context.BlobEndPoint)/$ContainerName/$DestinationName"
+					'LocalFilePath' = $FilePath
+				}
+				Add-AzureRmVhd @vhdParams
 			}
 			else
 			{
-				$bcParams.Blob = ($FilePath | Split-Path -Leaf)
+				$bcParams = @{
+					'File' = $FilePath
+					'BlobType' = $BlobType
+					'Blob' = $DestinationName
+				}
+				$storageContainer | Set-AzureStorageBlobContent @bcParams
 			}
-			
-			Get-AzureRmStorageAccount @saParams | Get-AzureStorageContainer @scParams | Set-AzureStorageBlobContent @bcParams
 		}
 		catch
 		{
