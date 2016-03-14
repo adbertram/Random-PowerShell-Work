@@ -3,7 +3,7 @@
 	param (
 		[string]$Title = 'My Menu'
 	)
-	cls
+	Clear-Host
 	Write-Host "================ $Title ================"
 	
 	Write-Host "1: Press '1' for this option."
@@ -15,17 +15,15 @@
 do
 {
 	Show-Menu
-	$input = Read-Host "Please make a selection"
-	switch ($input)
+	$selection = Read-Host "Please make a selection"
+	Clear-Host
+	switch ($selection)
 	{
 		'1' {
-			cls
 			'You chose option #1'
 		} '2' {
-			cls
 			'You chose option #2'
 		} '3' {
-			cls
 			'You chose option #3'
 		} 'q' {
 			return
@@ -33,4 +31,4 @@ do
 	}
 	pause
 }
-until ($input -eq 'q')
+until ($selection -eq 'q')

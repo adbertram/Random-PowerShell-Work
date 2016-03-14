@@ -1,4 +1,4 @@
-﻿#Requires -Module Azure
+﻿#Requires -Module AzureRM.Compute
 #Requires -Version 4
 
 Set-StrictMode -Version Latest
@@ -7,10 +7,10 @@ Set-StrictMode -Version Latest
 $null = Login-AzureRMAccount
 
 $Defaults = @{
-	'VMResourceGroupName' = 'BDT007'
-	'SnapshotStorageContainerName' = 'snapshots'
-	'SnapshotStorageAccountName' = 'pinf01stg02'
-	'SnapshotStorageAccountResourceGroupName' = 'IT-DevOps'
+	'VMResourceGroupName' = ''
+	'SnapshotStorageContainerName' = ''
+	'SnapshotStorageAccountName' = ''
+	'SnapshotStorageAccountResourceGroupName' = ''
 }
 
 function New-AzureVmSnapshot
@@ -29,37 +29,6 @@ function New-AzureVmSnapshot
 	begin
 	{
 		$ErrorActionPreference = 'Stop'
-		
-		function New-AzureDiskSnapshot
-		{
-			param (
-				[Parameter(Mandatory)]
-				[ValidateNotNullOrEmpty()]
-				[string]$VhdUri,
-			
-				[Parameter()]
-				[ValidateNotNullOrEmpty()]
-				[switch]$Overwrite
-			)
-			
-			$Blob = $Disk.MediaLink.Segments[-1]
-			$Container = $Disk.MediaLink.Segments[-2].TrimEnd('/')
-			$BlobCopyParams = @{
-				'SrcContainer' = $Container;
-				'SrcBlob' = $Blob;
-				'DestContainer' = $BackupContainer
-			}
-			if ($Overwrite.IsPresent)
-			{
-				$BlobCopyParams.Force = $true
-			}
-			else
-			{
-				throw "The snapshot of  [$($Disk.Name)] already exists."	
-			}
-			Start-AzureStorageBlobCopy @BlobCopyParams
-			#Get-AzureStorageBlobCopyState -Container $BackupContainer -Blob $Blob -WaitForComplete
-		}
 		
 		try
 		{
@@ -80,24 +49,26 @@ function New-AzureVmSnapshot
 		{
 			$vm = Get-AzureRmVM -ResourceGroupName $ResourceGroupName -Name $VMName
 			
-			#region Ensure the VM is stopped
-			Write-Verbose -Message "Stopping VM [$($VMName)]..."
+			Write-Verbose -Message 'Stopping VM...'
 			$stopVmResult = $vm | Stop-AzureRmVM -Force
-			if ($stopVmResult.StatusCode -eq 'OK')
-			{
-				Write-Verbose -Message "Successfully stopped [$($VMName)]."
-			}
-			else
-			{
-				throw $stopVmResult.Error
-			}
-			#endregion			
 			
-			## Find all VHDs attached to the VM
-			$osDisk = $vm.StorageProfile.OSDisk.VirtualHardDisk
-			$dataDisks = $vm.StorageProfile.DataDisks
+			#region Create an image
+			Save-AzureRmVMImage -ResourceGroupName $resourceGroupName -Name $vmName -DestinationContainerName snapshots
+			(gc C:\testimage.json -Raw | ConvertFrom-Json).resources.properties.storageprofile.osdisk.name
 			
-			## Copy the OS disk and all data disks to another location
+			#endregion
+			
+			#region Remove the VM
+			
+			#endregion
+			
+			#region Recreate the VM
+			
+			#endregion
+			
+			#region Reattach the VHD to the new VM
+			
+			#endregion
 			
 			
 		}
