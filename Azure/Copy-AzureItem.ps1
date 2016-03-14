@@ -79,11 +79,13 @@
 			## Use Add-AzureRmVhd if the file is a VHD. Set-AzureStorageBlobContent is known to corrupt the large VHD when uploading
 			if ($FilePath.EndsWith('.vhd'))
 			{
+				$destination = ('{0}{1}/{2}' -f $storageContainer.Context.BlobEndPoint, $ContainerName, $DestinationName)
 				$vhdParams = @{
 					'ResourceGroupName' = $ResourceGroupName
-					'Destination' = "$($storageContainer.Context.BlobEndPoint)/$ContainerName/$DestinationName"
+					'Destination' = $destination
 					'LocalFilePath' = $FilePath
 				}
+				Write-Verbose -Message "Uploading [$($vhdParams.LocalFilePath)] to [$($vhdParams.Destination)] in resource group [$($vhdParams.ResourceGroupName)]..."
 				Add-AzureRmVhd @vhdParams
 			}
 			else
