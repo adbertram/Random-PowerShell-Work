@@ -1,4 +1,5 @@
-﻿#Requires -Module AzureRm.Compute
+﻿#Requires -Module AzureRM.Compute
+#Requires -Version 4
 
 function Remove-AzrVirtualMachine
 {
@@ -54,22 +55,49 @@ function Remove-AzrVirtualMachine
 				}
 				$vm = Get-AzureRmVm @commonParams
 				
+				#region Get the VM ID
+				$azResourceParams = @{
+					'ResourceName' = $VMName
+					'ResourceType' = 'Microsoft.Compute/virtualMachines'
+					'ResourceGroupName' = $ResourceGroupName
+				}
+				$vmResource = Get-AzureRmResource @azResourceParams
+				$vmId = $vmResource.Properties.VmId
+				#endregion
+				
+				#region Remove the boot diagnostics disk
+				if ($vm.DiagnosticsProfile.bootDiagnostics)
+				{
+					Write-Verbose -Message 'Removing boot diagnostics storage container...'
+					$diagSa = [regex]::match($vm.DiagnosticsProfile.bootDiagnostics.storageUri, '^http://(.+?)\.').groups[1].value
+					$diagContainerName = ('bootdiagnostics-{0}-{1}' -f $vm.Name.ToLower().Substring(0, 9), $vmId)
+					$diagSaRg = (Get-AzureRmStorageAccount | where { $_.StorageAccountName -eq $diagSa }).ResourceGroupName
+					Get-AzureRmStorageAccount -ResourceGroupName $diagsarg -Name $diagsa | Remove-AzureStorageContainer -Name $diagContainerName -Force
+				}
+				#endregion
+				
 				Write-Verbose -Message 'Removing the Azure VM...'
-				$vm | Remove-AzureRmVM -Force
+				$null = $vm | Remove-AzureRmVM -Force
 				Write-Verbose -Message 'Removing the Azure network interface...'
-				$vm | Remove-AzureRmNetworkInterface -Force
+				$nulll = $vm | Remove-AzureRmNetworkInterface -Force
 				
 				## Remove the OS disk
 				Write-Verbose -Message 'Removing OS disk...'
-				$osDiskUri = $vm.StorageProfile.OSDisk.VirtualHardDisk.Uri
+				$osDiskUri = $vm.StorageProfile.OSDisk.Vhd.Uri
+				$osDiskContainerName = $osDiskUri.Split('/')[-2]
 				$osDiskStorageAcct = Get-AzureRmStorageAccount -Name $osDiskUri.Split('/')[2].Split('.')[0]
-				$osDiskStorageAcct | Remove-AzureStorageBlob -Container $osDiskUri.Split('/')[-2] -Blob $osDiskUri.Split('/')[-1] -ea Ignore
+				$osDiskStorageAcct | Remove-AzureStorageBlob -Container $osDiskContainerName -Blob $osDiskUri.Split('/')[-1] -ea Ignore
+				
+				#region Remove the status blob
+				##TODO: Figure out how to get the ID in this blob
+				#$osDiskStorageAcct | Remove-AzureStorageBlob -Container $osDiskContainerName -Blob $statusBlobName
+				#endregion
 				
 				## Remove any other attached disks
 				if ($vm.DataDiskNames.Count -gt 0)
 				{
 					Write-Verbose -Message 'Removing data disks...'
-					foreach ($uri in $vm.StorageProfile.DataDisks.VirtualHardDisk.Uri)
+					foreach ($uri in $vm.StorageProfile.DataDisks.Vhd.Uri)
 					{
 						$dataDiskStorageAcct = Get-AzureRmStorageAccount -Name $uri.Split('/')[2].Split('.')[0]
 						$dataDiskStorageAcct | Remove-AzureStorageBlob -Container $uri.Split('/')[-2] -Blob $uri.Split('/')[-1] -ea Ignore
