@@ -1,20 +1,65 @@
-﻿function Get-FunctionDefaultParameters
+﻿#Requires -Version 4
+
+function Get-FunctionDefaultParameter
 {
-	[CmdletBinding()]
-	param (
-		[string]$FunctionName
-	)
-	$ast = (Get-Command $FunctionName).ScriptBlock.Ast
+	<#
+	.SYNOPSIS
+		This function is used to fine all default parameter values defined in a function. In order for this to work, be sure the 
+		function you're specifying is either in a module availabe to be auto-imported or the function has manually been loaded into
+		the session.
 	
-	$charReplace = '{0}|{1}' -f "'", '"'
+		This function will enumerate all default values in a function and output their values. If it sees a value that's an expression,
+		it will expand the expression and output the result rather than just the string representation.
+	
+	.EXAMPLE
+		PS> function MyFunction { param($Param1 = 'Default1',$Param2 = 'Default2') }
+		PS> Get-FunctionDefaultParameter -Name MyFunction
+	
+		Name                           Value
+		----                           -----
+		Param1                         Default1
+		Param2                         Default2
+	
+		Comment-Example
+		
+	.PARAMETER ComputerName
+		The name of the computer you'd like to run this function against.
+	
+	.PARAMETER Credential
+		The PSCredential object to be used for authentication.  This is optional.
+	
+	.INPUTS
+		None. You cannot pipe objects to function-name.
+	
+	.OUTPUTS
+		output-type. function-name returns output-type-desc
+		#>
+	[CmdletBinding()]
+	[OutputType([hashtable])]
+	param
+	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$Name
+	)
+
+	$ast = (Get-Command $Name).ScriptBlock.Ast
+	
 	$select = @{ n = 'Name'; e = { $_.Name.VariablePath.UserPath } },
-	@{ n = 'Value'; e = { $_.DefaultValue.Extent.Text -replace $charReplace, '' } }
+	@{ n = 'Value'; e = { $_.DefaultValue.Extent.Text } }
 	
 	$params = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.ParameterAst] }, $true) | where { $_.DefaultValue } | select $select
 	$ht = @{ }
 	foreach ($param in $params)
 	{
-		$ht[$param.Name] = $param.Value
+		if ($param.Value -match '\(.*\)')
+		{
+			$ht[$param.Name] = Invoke-Expression $param.Value
+		}
+		else
+		{
+			$ht[$param.Name] = $param.Value -replace "'|`"`""
+		}
 	}
 	$ht
 }
