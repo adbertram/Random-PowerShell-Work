@@ -19,21 +19,16 @@ function Get-FunctionDefaultParameter
 		----                           -----
 		Param1                         Default1
 		Param2                         Default2
-	
-		Comment-Example
 		
-	.PARAMETER ComputerName
-		The name of the computer you'd like to run this function against.
-	
-	.PARAMETER Credential
-		The PSCredential object to be used for authentication.  This is optional.
+	.PARAMETER Name
+		The name of the function loaded into the session.
 	
 	.INPUTS
 		None. You cannot pipe objects to function-name.
 	
 	.OUTPUTS
-		output-type. function-name returns output-type-desc
-		#>
+		System.HashTable
+	#>
 	[CmdletBinding()]
 	[OutputType([hashtable])]
 	param
