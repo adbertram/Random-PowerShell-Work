@@ -56,22 +56,28 @@
 	}
 }
 
-function New-ValidationDynamicParam {
+function New-ValidationDynamicParam
+{
 	[CmdletBinding()]
 	[OutputType('System.Management.Automation.RuntimeDefinedParameter')]
 	param (
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[string]$Name,
+		
 		[ValidateNotNullOrEmpty()]
-		[Parameter(Mandatory)]
+		[Parameter()]
 		[array]$ValidateSetOptions,
+		
 		[Parameter()]
 		[switch]$Mandatory = $false,
+		
 		[Parameter()]
 		[string]$ParameterSetName = '__AllParameterSets',
+		
 		[Parameter()]
 		[switch]$ValueFromPipeline = $false,
+		
 		[Parameter()]
 		[switch]$ValueFromPipelineByPropertyName = $false
 	)
@@ -83,7 +89,10 @@ function New-ValidationDynamicParam {
 	$ParamAttrib.ValueFromPipeline = $ValueFromPipeline.IsPresent
 	$ParamAttrib.ValueFromPipelineByPropertyName = $ValueFromPipelineByPropertyName.IsPresent
 	$AttribColl.Add($ParamAttrib)
-	$AttribColl.Add((New-Object System.Management.Automation.ValidateSetAttribute($ValidateSetOptions)))
+	if ($PSBoundParameters.ContainsKey('ValidateSetOptions'))
+	{
+		$AttribColl.Add((New-Object System.Management.Automation.ValidateSetAttribute($ValidateSetOptions)))
+	}
 	$RuntimeParam = New-Object System.Management.Automation.RuntimeDefinedParameter($Name, [string], $AttribColl)
 	$RuntimeParam
 	
