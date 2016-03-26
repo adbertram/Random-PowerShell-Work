@@ -162,10 +162,10 @@ process {
 			} else {
 				Write-Verbose "Emailing the list of $($EmailRecords.Count) stale records to $EmailAddress"
 				$Params = @{
-					'From' = 'Union Hospital <abertram@uhhg.org>';
+					'From' = 'Union Hospital <abertram@domain.com>';
 					'To' = $EmailAddress;
 					'Subject' = 'UNH DNS Records To be Scavenged';
-					'SmtpServer' = 'smtp.uhhg.org'
+					'SmtpServer' = 'smtp.domain.com'
 					'Body' = $EmailRecords | Out-String
 				}
 				

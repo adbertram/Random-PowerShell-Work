@@ -46,9 +46,9 @@ begin {
 
 process {
 	try {
-		Get-DnsServerResourceRecord -ComputerName dc01 -ZoneName hosp.uhhg.org | where { ($_.HostName -match '^U.*XA65') -and ($_.Hostname -notmatch 'VM') -and ($_.Hostname -notmatch '.hosp.uhhg.org$') } | select @{ n = 'Hostname'; e = { $_.Hostname } }, @{n = 'IpAddres	s'; e = { $_.RecordData.IPv4Address.IPAddressToString } }
-		$CitrixRecords | select -Skip 1 | % { try { Add-DnsServerResourceRecord -ZoneName hosp.uhhg.org -ComputerName dc01 -IPv4Address $_.IpAddress -Name $_.Hostname -A } catch { } }
-		$CitrixRecords | % { Get-DnsServerResourceRecord -ComputerName dc01 -Name $_.Hostname -RRType A -ZoneName hosp.uhhg.org }
+		Get-DnsServerResourceRecord -ComputerName dc01 -ZoneName domain.com | where { ($_.HostName -match '^U.*XA65') -and ($_.Hostname -notmatch 'VM') -and ($_.Hostname -notmatch '.domain.com$') } | select @{ n = 'Hostname'; e = { $_.Hostname } }, @{n = 'IpAddres	s'; e = { $_.RecordData.IPv4Address.IPAddressToString } }
+		$CitrixRecords | select -Skip 1 | % { try { Add-DnsServerResourceRecord -ZoneName domain.com -ComputerName dc01 -IPv4Address $_.IpAddress -Name $_.Hostname -A } catch { } }
+		$CitrixRecords | % { Get-DnsServerResourceRecord -ComputerName dc01 -Name $_.Hostname -RRType A -ZoneName domain.com }
 		
 	} catch {
 		Write-Error $_.Exception.Message

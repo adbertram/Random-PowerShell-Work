@@ -37,7 +37,7 @@ param (
 	[string]$InstallationProgram,
 	[Parameter()]
 	[ValidateScript({ Test-Path -Path $_ -PathType Container })]
-	[string]$RootPackageFolderPath = '\\hosp.uhhg.org\dfs\softwarelibrary\software_packages',
+	[string]$RootPackageFolderPath = '\\server\dfs\softwarelibrary\software_packages',
 	[Parameter()]
 	[ValidateScript({ Test-Path -Path $_ -PathType 'Leaf' })]
 	[string]$IconLocationFilePath,
@@ -56,7 +56,7 @@ param (
 	[Parameter()]
 	[string]$SiteCode = 'UHP',
 	[Parameter()]
-	[string]$InstallScriptTemplateFilePath = '\\hosp.uhhg.org\dfs\softwarelibrary\software_packages\_Template_Files\install.ps1'
+	[string]$InstallScriptTemplateFilePath = '\\server\dfs\softwarelibrary\software_packages\_Template_Files\install.ps1'
 	
 )
 

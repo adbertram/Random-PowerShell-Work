@@ -60,7 +60,7 @@ param (
 			ValueFromPipeline = $False,
 			ValueFromPipelineByPropertyName = $False)]
 			[ValidateScript({ Test-Path $_ })]
-	[string]$WolCmdFilePath = '\\hosp.uhhg.org\netlogon\wolcmd.exe',
+	[string]$WolCmdFilePath = 'wolcmd.exe',
 	[Parameter(Mandatory = $False,
 			ValueFromPipeline = $False,
 			ValueFromPipelineByPropertyName = $False)]

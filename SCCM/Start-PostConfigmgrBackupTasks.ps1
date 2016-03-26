@@ -259,11 +259,11 @@ end {
 	Write-Log 'Emailing results of backup...'
 	## Email me the results of the backup and post-backup tasks
 	$Params = @{
-		'From' =  'UNH ConfigMgr Backup <abertram@uhhg.org>';
-		'To' = 'Adam Bertram <abertram@kellerschroeder.com>';
-		'Subject' = 'UNH ConfigMgr Backup';
+		'From' =  'ConfigMgr Backup <abertram@domain.org>';
+		'To' = 'Adam Bertram <adbertram@gmail.com>';
+		'Subject' = 'ConfigMgr Backup';
 		'Attachment' =  $script:LogFilePath;
-		'SmtpServer' = 'smtp.uhhg.org'
+		'SmtpServer' = 'smtp.domain.com'
 	}
 	
 	Send-MailMessage @Params -Body 'ConfigMgr Backup Email'
