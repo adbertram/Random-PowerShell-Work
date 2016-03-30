@@ -26,7 +26,7 @@
 		to ping yet.
 	#>
 	[CmdletBinding()]
-	[OutputType($null)]
+	[OutputType()]
 	param
 	(
 		[Parameter(Mandatory)]
