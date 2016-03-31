@@ -32,7 +32,7 @@
 		)
 		$RuntimeParamDic = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
 		foreach ($Param in $ParamOptions) {
-			$RuntimeParam = New-ValidationDynamicParam @Param
+			$RuntimeParam = New-DynamicParameter @Param
 			$RuntimeParamDic.Add($Param.Name, $RuntimeParam)
 		}
 		
@@ -56,7 +56,7 @@
 	}
 }
 
-function New-ValidationDynamicParam
+function New-DynamicParameter
 {
 	[CmdletBinding()]
 	[OutputType('System.Management.Automation.RuntimeDefinedParameter')]
