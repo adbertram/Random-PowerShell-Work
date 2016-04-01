@@ -1,6 +1,42 @@
 ﻿#Requires -Module AzureRm.Compute
 #Requires -Version 4
 
+function Get-AzrDnsServerAddress
+{
+	[CmdletBinding()]
+	[OutputType('Microsoft.Azure.Commands.Network.Models.PSNetworkInterfaceDnsSettings')]
+	param
+	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$VMName,
+		
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[string]$ResourceGroupName
+	)
+	#region Find the VM
+	if ($PSBoundParameters.ContainsKey('ResourceGroupName'))
+	{
+		$getParams = @{
+			'ResourceGroupName' = $ResourceGroupName
+			'VMName' = $VMName
+		}
+		$vm = Get-AzureRmVM -VMName $VMName -ResourceGroupName $ResourceGroupName
+	}
+	else
+	{
+		if (-not ($vm = Get-AzureRmVM | Where-Object { $_.Name -eq $VMName }))
+		{
+			throw "The VM [$($VMName)] was not found."
+		}
+	}
+	#endregion
+	
+	$vnic = $vm | Get-AzureRmNetworkInterface
+	$vnic.DnsSettings.AppliedDnsServers
+}
+
 function Set-AzrDnsServerAddress
 {
 	[CmdletBinding()]
