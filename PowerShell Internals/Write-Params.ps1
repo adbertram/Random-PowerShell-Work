@@ -1,12 +1,12 @@
-﻿function Write-Params
+﻿function Write-Param
 {
 	<#
 	.SYNOPSIS
-		Write-Params is a simple function that writes the parameters used for the calling function out to the console. This is useful
+		Write-Param is a simple function that writes the parameters used for the calling function out to the console. This is useful
 		 in debugging situations where you have function "trees" where you have dozens of functions calling each and want to see
 		what parameters are being passed to each function via the console.
 	
-		No need to pass any parameters to Write-Params. It uses the PS call stack to find what function called it and all the parameters
+		No need to pass any parameters to Write-Param. It uses the PS call stack to find what function called it and all the parameters
 		used.
 		
 	.EXAMPLE

@@ -17,6 +17,10 @@
 	.PARAMETER ComputerName
 		The Netbios, DNS FQDN or IP address of the computer you'd like to ping. This is mandatory.
 	
+	.PARAMETER Offline
+		Use this switch parameter to perform the opposite of waiting for a ping. This will reverse functionality and wait for
+		ComputerName to go offline.
+	
 	.PARAMETER Timeout
 		The maximum amount of seconds that you'd like to wait for ComputerName to become available. By default, this is set to
 		600 seconds (5 minutes).
@@ -43,15 +47,33 @@
 		
 	)
 	try {
-		$timer = [Diagnostics.Stopwatch]::StartNew()
-		while (-not (Test-Connection -ComputerName $ComputerName -Quiet -Count 1))
+		$timer = [Diagnostics.Stopwatch]::StartNew();
+		Write-Verbose -Source $MyInvocation.MyCommand -Message "Waiting for [$ComputerName] to become pingable";
+		if ($Offline.IsPresent)
 		{
-			Write-Verbose -Message "Waiting for [$($ComputerName)] to become pingable..."
-			if ($timer.Elapsed.TotalSeconds -ge $Timeout)
+			while (Test-Connection -ComputerName $ComputerName -Quiet -Count 1)
 			{
-				throw "Timeout exceeded. Giving up on ping availability to [$ComputerName]"
+				Write-Verbose -Message "Waiting for [$($ComputerName)] to go offline..."
+				if ($timer.Elapsed.TotalSeconds -ge $Timeout)
+				{
+					throw "Timeout exceeded. Giving up on [$ComputerName] going offline";
+				}
+				Start-Sleep -Seconds 10;
 			}
-			Start-Sleep -Seconds $CheckEvery
+			Write-Verbose -Source $MyInvocation.MyCommand -Message "[$($ComputerName)] is now offline. We waited $([Math]::Round($timer.Elapsed.TotalSeconds, 0)) seconds";
+		}
+		else
+		{
+			while (-not (Test-Connection -ComputerName $ComputerName -Quiet -Count 1))
+			{
+				Write-Verbose -Message "Waiting for [$($ComputerName)] to become pingable..."
+				if ($timer.Elapsed.TotalSeconds -ge $Timeout)
+				{
+					throw "Timeout exceeded. Giving up on ping availability to [$ComputerName]";
+				}
+				Start-Sleep -Seconds 10;
+			}
+			Write-Verbose -Source $MyInvocation.MyCommand -Message "Ping is now available on [$($ComputerName)]. We waited $([Math]::Round($timer.Elapsed.TotalSeconds, 0)) seconds";
 		}
 	}
 	catch 
