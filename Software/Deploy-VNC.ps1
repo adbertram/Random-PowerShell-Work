@@ -1,5 +1,23 @@
-﻿function Deploy-Vnc
+﻿#Requires -Version 4
+function Deploy-Vnc
 {
+	<#
+	.SYNOPSIS
+		This function deploys the UltraVNC software package to a remote computer.
+		
+	.EXAMPLE
+		PS> Deploy-VNC -ComputerName CLIENT1 -InstallFolder \\MEMBERSRV1\VNC
+	
+		This example copies all files from \\MEMBERSRV1\VNC which should contain a file called setup.exe representing the UltraVNC
+		installer and silentinstall.inf representing the UltraVNC silent install answer file. These files will be copied to
+		CLIENT1 in a VNC folder and executed to install UltraVNC.
+		
+	.PARAMETER ComputerName
+		The name of the computer you'd like to run this function against. This is mandatory.
+	
+	.PARAMETER InstallerFolder
+		The folder that contains the UltraVNC installer (setup.exe) and the UltraVNC answer file (silentinstall.inf).
+	#>
 	[CmdletBinding()]
 	param
 	(
@@ -8,10 +26,10 @@
 		[ValidateScript({ Test-Connection -ComputerName $_ -Quiet -Count 1 })]
 		[string]$ComputerName,
 		
-		[Parameter()]
+		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[ValidateScript({ Test-Path -Path $_ -PathType Container })]
-		[string]$InstallerFolder = '\\MEMBERSRV1\ToolShare'
+		[string]$InstallerFolder
 	)
 	begin
 	{
@@ -61,8 +79,8 @@
 			
 			## Remotely invoke the VNC installer on the computer
 			$localInstallFolder = "C:\$installFolderName".TrimEnd('\')
-			$localInstaller = "$localInstallFolder\UltraVNC_Setup.exe"
-			$localInfFile = "$localInstallFolder\UltraVNCSilentInstall.inf"
+			$localInstaller = "$localInstallFolder\Setup.exe"
+			$localInfFile = "$localInstallFolder\silentnstall.inf"
 			
 			$scriptBlock = {
 				Start-Process $using:localInstaller -Args "/verysilent /loadinf=`"$using:localInfFile`"" -Wait -NoNewWindow
@@ -72,7 +90,7 @@
 		}
 		catch
 		{
-			Write-Error $_.Exception.Message
+			$PSCmdlet.ThrowTerminatingError($_)
 		}
 		finally
 		{
