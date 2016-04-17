@@ -90,7 +90,7 @@ function Save-PdfField
 	(
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
-		[Hashtable[]]$Field,
+		[Hashtable]$Fields,
 		
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
@@ -123,12 +123,9 @@ function Save-PdfField
 			$stamper = New-Object iTextSharp.text.pdf.PdfStamper($reader, [System.IO.File]::Create($OutputPdfFilePath))
 			
 			## Apply all hash table elements into the PDF form
-			foreach ($i in $Field)
+			foreach ($j in $Fields.GetEnumerator())
 			{
-				foreach ($j in $i.GetEnumerator())
-				{
-					$null = $stamper.AcroFields.SetField($j.Key, $j.Value)
-				}
+				$null = $stamper.AcroFields.SetField($j.Key, $j.Value)
 			}
 		}
 		catch
