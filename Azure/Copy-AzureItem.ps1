@@ -1,4 +1,7 @@
-﻿function Copy-AzureItem
+﻿#Requires -Version 4
+#Requires -Module AzureRm.Compute
+
+function Copy-AzureItem
 {
 	<#
 	.SYNOPSIS
