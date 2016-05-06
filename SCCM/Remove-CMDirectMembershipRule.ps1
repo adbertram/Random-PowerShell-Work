@@ -1,4 +1,6 @@
-﻿<#
+﻿#Requires -Version 4
+
+<#
 .NOTES
 	Created on: 5/22/2014 10:56 AM
 	Created by: Adam Bertram
@@ -70,9 +72,9 @@ process {
 		if (!$CollectionMembers) {
 			Write-Warning 'No collection members found in collection'
 		} else {
-			foreach ($member in $CollectionMembers) {
-				Remove-CMDeviceCollectionDirectMembershipRule -CollectionID $CollectionID -ResourceName $member -force
-			}
+			@($CollectionMembers).foreach({
+				Remove-CMDeviceCollectionDirectMembershipRule -CollectionID $CollectionID -ResourceName $_ -force
+			})
 		}
 	} catch {
 		Write-Error $_.Exception.Message
