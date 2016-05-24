@@ -24,13 +24,13 @@
 			$Today = (Get-Date).Date
 			if ($Weekday -match 'next') {
 				## The user wants next week's weekday
-				$Range = 0..6
+				$Range = 1..7
 			} elseif ($Weekday -match 'last') {
 				## The user wants last week's weekday
-				$Range = -0.. - 6
+				$Range = -1.. - 7
 			} else {
 				## The user didn't specify so assuming they just want the upcoming weekday
-				$Range = 0..6
+				$Range = 1..7
 			}
 			$Range | foreach {
 				$Day = $Today.AddDays($_);
