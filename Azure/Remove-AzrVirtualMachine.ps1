@@ -47,9 +47,8 @@ function Remove-AzrVirtualMachine
 		{
 			$scriptBlock = {
 				param ($VMName,
-					
 					$ResourceGroupName)
-				$commonParams = @{
+					$commonParams = @{
 					'Name' = $VMName;
 					'ResourceGroupName' = $ResourceGroupName
 				}
@@ -77,7 +76,7 @@ function Remove-AzrVirtualMachine
 						'Name' = $diagSa
 					}
 					
-					Get-AzureRmStorageAccount @saParams | Get-AzureStorageContainer | where { $_.Name -eq $diagContainerName } | Remove-AzureStorageContainer -Force
+					Get-AzureRmStorageAccount @saParams | Get-AzureStorageContainer | where { $_.Name-eq $diagContainerName } | Remove-AzureStorageContainer -Force
 				}
 				#endregion
 				
@@ -127,7 +126,7 @@ function Remove-AzrVirtualMachine
 					'ArgumentList' = @($VMName, $ResourceGroupName)
 					'Name' = "Azure VM $VMName Removal"
 				}
-				Start-Job @jobParams
+				Start-Job @jobParams 
 			}
 		}
 		catch
