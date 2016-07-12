@@ -1,7 +1,4 @@
-﻿#Requires -Module AzureRM.Compute
-#Requires -Version 4
-
-function Remove-AzrVirtualMachine
+﻿function Remove-AzrVirtualMachine
 {
 	<#
 	.SYNOPSIS
@@ -9,8 +6,7 @@ function Remove-AzrVirtualMachine
 		due to the time it takes to remove an Azure VM.
 		
 	.EXAMPLE
-		PS> Login-AzureRmAccount -Credential (Get-KeyStoreCredential -Name 'svcOrchestrator')
-		PS> Get-AzureRmVm -Name 'BAPP07GEN22' | Remove-AzrVirtualMachine
+		PS> Get-AzureRmVm -Name 'BAPP07GEN22' | Remove-AzrVirtualMachine -Credential (Get-Credential)
 	
 		This example removes the Azure VM BAPP07GEN22 as well as any disks attached to it.
 		
@@ -24,30 +20,32 @@ function Remove-AzrVirtualMachine
 		If you'd rather wait for the Azure VM to be removed before returning control to the console, use this switch parameter.
 		If not, it will create a job and return a PSJob back.
 	#>
-	[CmdletBinding()]
+	[CmdletBinding(SupportsShouldProcess,ConfirmImpact = 'High')]
 	param
 	(
-		[Parameter(Mandatory, ValueFromPipelineByPropertyName)]
+		[Parameter(Mandatory,ValueFromPipelineByPropertyName)]
 		[ValidateNotNullOrEmpty()]
 		[Alias('Name')]
 		[string]$VMName,
 		
-		[Parameter(Mandatory, ValueFromPipelineByPropertyName)]
+		[Parameter(Mandatory,ValueFromPipelineByPropertyName)]
 		[ValidateNotNullOrEmpty()]
 		[string]$ResourceGroupName,
-		
+
+		[Parameter(Mandatory)]
+		[pscredential]$Credential,
+
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
 		[switch]$Wait
 		
 	)
-	process
-	{
+	process {
 		try
 		{
 			$scriptBlock = {
 				param ($VMName,
-					$ResourceGroupName)
+						$ResourceGroupName)
 					$commonParams = @{
 					'Name' = $VMName;
 					'ResourceGroupName' = $ResourceGroupName
@@ -69,7 +67,13 @@ function Remove-AzrVirtualMachine
 				{
 					Write-Verbose -Message 'Removing boot diagnostics storage container...'
 					$diagSa = [regex]::match($vm.DiagnosticsProfile.bootDiagnostics.storageUri, '^http[s]?://(.+?)\.').groups[1].value
-					$diagContainerName = ('bootdiagnostics-{0}-{1}' -f $vm.Name.ToLower().Substring(0, 9), $vmId)
+					if ($vm.Name.Length -gt 9) {
+						$i = 9
+					} else {
+						$i = $vm.Name.Length - 1
+					}
+
+					$diagContainerName = ('bootdiagnostics-{0}-{1}' -f $vm.Name.ToLower().Substring(0, $i), $vmId)
 					$diagSaRg = (Get-AzureRmStorageAccount | where { $_.StorageAccountName -eq $diagSa }).ResourceGroupName
 					$saParams = @{
 						'ResourceGroupName' = $diagSaRg
@@ -118,7 +122,7 @@ function Remove-AzrVirtualMachine
 			else
 			{
 				$initScript = {
-					$null = Login-AzureRmAccount -Credential (Get-KeyStoreCredential -Name 'Azure svcOrchestrator')
+					$null = Login-AzureRmAccount -Credential $Credential
 				}
 				$jobParams = @{
 					'ScriptBlock' = $scriptBlock
@@ -131,7 +135,7 @@ function Remove-AzrVirtualMachine
 		}
 		catch
 		{
-			Write-Error $_.Exception.Message
+			Write-Error -Message $_.Exception.Message
 		}
 	}
 }

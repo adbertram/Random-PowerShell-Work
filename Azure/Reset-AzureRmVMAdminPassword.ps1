@@ -1,4 +1,4 @@
-﻿#Requires -Module AzureRm.Compute
+﻿#Requires @{'ModuleName' = AzureRm.Compute; 'ModuleVersion' = '1.3.1'}
 #Requires -Version 4
 
 function Reset-AzureRmVMAdminPassword
@@ -74,13 +74,23 @@ function Reset-AzureRmVMAdminPassword
 				throw 'VM agent has not been installed.'
 			}
 			
+			$typeParams = @{
+				'PublisherName' = 'Microsoft.Compute'
+				'Type' = 'VMAccessAgent'
+				'Location' = $vm.Location
+			}
+			
+			$typeHandlerVersion = (Get-AzureRmVMExtensionImage @typeParams | Sort-Object Version -Descending | Select-Object -first 1).Version
+			
+			
 			$extensionParams = @{
 				'VMName' = $VMName
-				'Username' = $Credential.UserName
+				'Username' = $vm.OSProfile.AdminUsername
 				'Password' = $Credential.GetNetworkCredential().Password
 				'ResourceGroupName' = $ResourceGroupName
 				'Name' = 'AdminPasswordReset'
 				'Location' = $vm.Location
+				'TypeHandlerVersion' = $typeHandlerVersion
 			}
 			
 			Write-Verbose -Message 'Resetting admin password...'
