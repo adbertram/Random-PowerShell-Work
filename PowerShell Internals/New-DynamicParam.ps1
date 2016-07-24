@@ -74,7 +74,16 @@ function New-DynamicParameter
 		[array]$ValidateSetOptions,
 		
 		[Parameter()]
-		[switch]$Mandatory,
+		[ValidateNotNullOrEmpty()]
+		[switch]$ValidateNotNullOrEmpty,
+		
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[ValidateCount(2, 2)]
+		[int[]]$ValidateRange,
+		
+		[Parameter()]
+		[switch]$Mandatory = $false,
 		
 		[Parameter()]
 		[string]$ParameterSetName = '__AllParameterSets',
@@ -97,6 +106,15 @@ function New-DynamicParameter
 	{
 		$AttribColl.Add((New-Object System.Management.Automation.ValidateSetAttribute($ValidateSetOptions)))
 	}
+	if ($PSBoundParameters.ContainsKey('ValidateRange'))
+	{
+		$AttribColl.Add((New-Object System.Management.Automation.ValidateRangeAttribute($ValidateRange)))
+	}
+	if ($ValidateNotNullOrEmpty.IsPresent)
+	{
+		$AttribColl.Add((New-Object System.Management.Automation.ValidateNotNullOrEmptyAttribute))
+	}
+	
 	$RuntimeParam = New-Object System.Management.Automation.RuntimeDefinedParameter($Name, $Type, $AttribColl)
 	$RuntimeParam
 	
