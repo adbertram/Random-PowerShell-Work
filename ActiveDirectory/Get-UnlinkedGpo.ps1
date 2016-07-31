@@ -10,17 +10,15 @@ function Get-UnlinkedGpo
 	.EXAMPLE
 		PS> Get-UnlinkedGpo
 	
-		Comment-Example
-		
-	.PARAMETER Param1
-		A mandatory  paramType1 parameter representing ...
-	
+		Name
+		----
+		GPOWithNoLinks1
+		GPOWithNoLinks2
+		GPOWithNoLinks3
 	#>
+	[OutputType([pscustomobject])]
 	[CmdletBinding()]
-	param
-	(
-		
-	)
+	param()
 	begin
 	{
 		$ErrorActionPreference = 'Stop'
