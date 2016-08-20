@@ -1,33 +1,15 @@
-﻿#Requires -Version 4
-
 function Get-FunctionDefaultParameter
 {
 	<#
 	.SYNOPSIS
-		This function is used to fine all default parameter values defined in a function. In order for this to work, be sure the 
-		function you're specifying is either in a module availabe to be auto-imported or the function has manually been loaded into
-		the session.
-	
-		This function will enumerate all default values in a function and output their values. If it sees a value that's an expression,
-		it will expand the expression and output the result rather than just the string representation.
+	This is a function that will find all of the default parameter names and values from a given function.
 	
 	.EXAMPLE
-		PS> function MyFunction { param($Param1 = 'Default1',$Param2 = 'Default2') }
-		PS> Get-FunctionDefaultParameter -Name MyFunction
+	PS> Get-FunctionDefaultParameter -FunctionName Get-Something
 	
-		Name                           Value
-		----                           -----
-		Param1                         Default1
-		Param2                         Default2
-		
-	.PARAMETER Name
-		The name of the function loaded into the session.
+	.PARAMETER FuntionName
+	A mandatory string parameter representing the name of the function to find default parameters to.
 	
-	.INPUTS
-		None. You cannot pipe objects to function-name.
-	
-	.OUTPUTS
-		System.HashTable
 	#>
 	[CmdletBinding()]
 	[OutputType([hashtable])]
@@ -35,26 +17,24 @@ function Get-FunctionDefaultParameter
 	(
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
-		[string]$Name
+		[string]$FunctionName	
 	)
-
-	$ast = (Get-Command $Name).ScriptBlock.Ast
-	
-	$select = @{ n = 'Name'; e = { $_.Name.VariablePath.UserPath } },
-	@{ n = 'Value'; e = { $_.DefaultValue.Extent.Text } }
-	
-	$params = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.ParameterAst] }, $true) | where { $_.DefaultValue } | select $select
-	$ht = @{ }
-	foreach ($param in $params)
+	try
 	{
-		if ($param.Value -match '\(.*\)')
-		{
-			$ht[$param.Name] = Invoke-Expression $param.Value
-		}
-		else
-		{
-			$ht[$param.Name] = $param.Value -replace "'|`"`""
-		}
+		$ast = (Get-Command $FunctionName).ScriptBlock.Ast
+		
+		$select = @{ n = 'Name'; e = { $_.Name.VariablePath.UserPath } },
+		@{ n = 'Value'; e = { $_.DefaultValue.Extent.Text -replace "`"|'" } }
+		
+		$ht = @{}
+		@($ast.FindAll({ $args[0] -is [System.Management.Automation.Language.ParameterAst] }, $true) | Where-Object { $_.DefaultValue } | Select-Object $select).foreach({
+			$ht[$_.Name] = $_.Value	
+			})
+		$ht
+		
 	}
-	$ht
+	catch
+	{
+		Write-Error -Message $_.Exception.Message
+	}
 }
