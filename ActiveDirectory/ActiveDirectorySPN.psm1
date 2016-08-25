@@ -410,6 +410,10 @@ function New-ADSpn
 		{
 			$getParams.Server = $DomainName
 		}
+		if ($PSBoundParameters.ContainsKey('Credential'))
+		{
+			$getParams.Credential = $Credential	
+		}
 		$account = &$getFunction @getParams
 		if (-not $account)
 		{
@@ -1159,7 +1163,7 @@ function Get-ADUserSpn
 			}
 			if ($PSBoundParameters.ContainsKey('Credential'))
 			{
-				$params.ObjectValue = $Credential
+				$params.Credential = $Credential
 			}
 			Get-ADSpn @params | Select-Object *, @{ n = 'UserName'; e = { $_.SamAccountName } } -ExcludeProperty samAccountName
 		}
