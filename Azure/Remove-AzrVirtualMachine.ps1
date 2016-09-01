@@ -87,7 +87,20 @@
 				Write-Verbose -Message 'Removing the Azure VM...'
 				$null = $vm | Remove-AzureRmVM -Force
 				Write-Verbose -Message 'Removing the Azure network interface...'
-				$null = $vm | Remove-AzureRmNetworkInterface -Force
+				foreach($nicUri in $vm.NetworkInterfaceIDs)
+				{
+					$nic = Get-AzureRmNetworkInterface -ResourceGroupName $vm.ResourceGroupName -Name $nicUri.Split('/')[-1]
+					Remove-AzureRmNetworkInterface -Name $nic.Name -ResourceGroupName $vm.ResourceGroupName -Force
+					foreach($ipConfig in $nic.IpConfigurations)
+					{
+						if($ipConfig.PublicIpAddress -ne $null)
+					        {
+							Write-Verbose -Message 'Removing the Public IP Address...'
+							Remove-AzureRmPublicIpAddress -ResourceGroupName $vm.ResourceGroupName -Name $ipConfig.PublicIpAddress.Id.Split('/')[-1] -Force
+				             	} 
+				 	}
+				} 
+
 				
 				## Remove the OS disk
 				Write-Verbose -Message 'Removing OS disk...'
