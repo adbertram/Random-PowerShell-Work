@@ -48,7 +48,7 @@
 	)
 	try {
 		$timer = [Diagnostics.Stopwatch]::StartNew();
-		Write-Verbose -Source $MyInvocation.MyCommand -Message "Waiting for [$ComputerName] to become pingable";
+		Write-Verbose -Message "Waiting for [$ComputerName] to become pingable";
 		if ($Offline.IsPresent)
 		{
 			while (Test-Connection -ComputerName $ComputerName -Quiet -Count 1)
@@ -60,7 +60,7 @@
 				}
 				Start-Sleep -Seconds 10;
 			}
-			Write-Verbose -Source $MyInvocation.MyCommand -Message "[$($ComputerName)] is now offline. We waited $([Math]::Round($timer.Elapsed.TotalSeconds, 0)) seconds";
+			Write-Verbose -Message "[$($ComputerName)] is now offline. We waited $([Math]::Round($timer.Elapsed.TotalSeconds, 0)) seconds";
 		}
 		else
 		{
@@ -73,7 +73,7 @@
 				}
 				Start-Sleep -Seconds 10;
 			}
-			Write-Verbose -Source $MyInvocation.MyCommand -Message "Ping is now available on [$($ComputerName)]. We waited $([Math]::Round($timer.Elapsed.TotalSeconds, 0)) seconds";
+			Write-Verbose -Message "Ping is now available on [$($ComputerName)]. We waited $([Math]::Round($timer.Elapsed.TotalSeconds, 0)) seconds";
 		}
 	}
 	catch 
