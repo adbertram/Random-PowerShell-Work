@@ -178,8 +178,14 @@ function Install-WindowsUpdate {
     }
     process {
         try {
+            $connParams = @{}
+            if ($PSBoundParameters.ContainsKey('Credential'))
+            {
+                $connParams.Credential = $Credential
+            }
             @($ComputerName).foreach({
-                    if (-not (Get-WindowsUpdate -ComputerName $_)) {
+                    $connParams.ComputerName = $_
+                    if (-not (Get-WindowsUpdate @connParams)) {
                         Write-Verbose -Message 'No updates needed to install. Skipping computer...'
                     }
                     else {
@@ -226,9 +232,6 @@ function Install-WindowsUpdate {
                                     Scriptblock = $scriptBlock
                                     PassThru = $true
                                 }
-                                if ($Credential) {
-                                    $taskParams.Credential = $args[2]	
-                                }
                                 Write-Verbose -Message 'Creating scheduled task...'
                                 if (-not ($task = NewWindowsUpdateScheduledTask @taskParams)) {
                                     throw "Failed to create scheduled task."
@@ -243,8 +246,14 @@ function Install-WindowsUpdate {
                                     Verbose = $true
                                 }
                                 Invoke-Command @icmParams
-
-                                Wait-ScheduledTask -Name $task.TaskName -ComputerName $ComputerName
+                                
+                                $waitParams = @{
+                                    ComputerName = $_
+                                }
+                                if ($Credential) {
+                                    $waitParams.Credential = $Credential
+                                }
+                                Wait-ScheduledTask @waitParams -Name $task.TaskName
 
                                 $installResult = GetWindowsUpdateInstallResult -Session $session
 
@@ -263,7 +272,7 @@ function Install-WindowsUpdate {
                             } catch {
                                 $PSCmdlet.ThrowTerminatingError($_)
                             } finally {
-                                Remove-ScheduledTask -ComputerName $ComputerName -Name $TaskName
+                                Remove-ScheduledTask @connParams -Name $TaskName
                             }
                         }
 
@@ -281,7 +290,14 @@ function Install-WindowsUpdate {
         } 
         finally {
             # Remove any sessions created. This is done when processes aren't invoked under a PS job
-            @(Get-PSSession -ComputerName $ComputerName).foreach({
+            $sessParams = @{
+                ComputerName = $ComputerName
+            }
+            if ($PSBoundParameters.ContainsKey('Credential'))
+            {
+                $sessParams.Credential = $Credential
+            }
+            @(Get-PSSession @sessParams).foreach({
                     Remove-PSSession -Session $_
                 })
         }
@@ -635,7 +651,6 @@ function Wait-ScheduledTask
 		{
 			$sessParams = @{
                 ComputerName = $ComputerName
-                ArgumentList = $Name
             }
             if ($PSBoundParameters.ContainsKey('Credential'))
             {
