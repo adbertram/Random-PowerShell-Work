@@ -42,19 +42,18 @@ $defaultCommandNames = (Get-Command -Module 'Microsoft.PowerShell.*','Pester').N
 $defaultModules = (Get-Module -Name 'Microsoft.PowerShell.*','Pester').Name
 
 if ($scripts = Get-ChildItem -Path $FolderPath -Recurse -Filter '*.ps*' | Sort-Object Name) {
-    $commandRefNames = @()
     $scripts | foreach({
         $script = $_.FullName
 
         $ast = [System.Management.Automation.Language.Parser]::ParseFile($script,[ref]$null,[ref]$null)
         $commandRefs = $ast.FindAll({$args[0] -is [System.Management.Automation.Language.CommandAst]},$true)
         $script:commandRefNames += @($commandRefs).foreach({ [string]$_.CommandElements[0] }) | Select-Object -Unique
-        $script:commandDeclarationNames = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) | Select-Object -ExpandProperty Name
-
+        $script:commandDeclarationNames += $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) | Select-Object -ExpandProperty Name
+        
         describe "[$($script)] Test" {
 
-            if ($PSBoundParameters.ContainsKey('CompanyReference')) {
-                $companyRefRegex = ('({0})' -f ($ComanyReference -join '|'))
+            if ($CompanyReference) {
+                $companyRefRegex = ('({0})' -f ($CompanyReference -join '|'))
                 if ($companyReferences = [regex]::Matches((Get-Content $script -Raw),$companyRefRegex).Groups) {
                     $companyReferences = $companyReferences.Groups[1].Value
                 }
