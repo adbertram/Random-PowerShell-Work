@@ -38,7 +38,7 @@ param(
     [string[]]$CompanyReference
 )
 
-$defaultCommandNames = (Get-Command -Module 'Microsoft.PowerShell.*','Pester').Name
+$defaultCommandNames = (Get-Command -Module 'Microsoft.PowerShell.*','Pester' -All).Name
 $defaultModules = (Get-Module -Name 'Microsoft.PowerShell.*','Pester').Name
 
 if ($scripts = Get-ChildItem -Path $FolderPath -Recurse -Filter '*.ps*' | Sort-Object Name) {
@@ -74,7 +74,8 @@ if ($scripts = Get-ChildItem -Path $FolderPath -Recurse -Filter '*.ps*' | Sort-O
             $privateCommandNames = $commandRefNames | Select-Object -Property $properties | Where {
                 $_.Command -notin $defaultCommandNames -and 
                 $_.Command -notin $commandDeclarationNames -and
-                $_.Command -notmatch '^\$'
+                $_.Command -match '^\w' -and
+                $_.Command -notmatch 'powershell_ise\.exe'
             } | Select-Object -ExpandProperty Command
 
             if ($privateModuleNames = (Select-String -Path $script -Pattern "($($defaultModules -join '|'))" -NotMatch).Matches) {
