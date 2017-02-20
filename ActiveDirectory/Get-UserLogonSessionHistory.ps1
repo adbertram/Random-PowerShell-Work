@@ -23,7 +23,7 @@ param
 (
 	[Parameter(Mandatory)]
 	[ValidateNotNullOrEmpty()]
-	[string]$GPO
+	[string]$ComputerName
 )
 
 try
@@ -45,87 +45,67 @@ try
 	$SessionStopIds = ($SessionEvents | where { $_.EventType -eq 'SessionStop' }).ID
 	#endregion
 	
-	Write-Verbose -Message "Querying Active Directory for GPO [$($GPO)]"
-	if (-not ([xml]$xGPO = Get-GPOReport -Name $GPO -ReportType XML -ErrorAction SilentlyContinue -ErrorVariable err))
+	try
 	{
-		throw $err
-	}
-	$ouPaths = $xGPO.GPO.LinksTo.SOMPath
-	foreach ($o in $ouPaths)
-	{
-		$oSplit = $o.Split('/')
-		$dSplit = $oSplit[0].Split('.')
-		$oSplit = $oSplit[1..$oSplit.Length]
-		$ou = "OU=$([array]::Reverse($oSplit) -join ',OU='),DC=$($dSplit -join ',DC=')"
-		Write-Verbose -Message "Gathering up all computers in the [$($ou)] OU"
-		$computers = Get-ADComputer -SearchBase $ou -Filter { Enabled -eq $true }
-		foreach ($c in $computers)
-		{
-			try
+		$logNames = ($SessionEvents.LogName | select -Unique)
+		$ids = $SessionEvents.Id
+		
+		## Build the insane XPath query for the security event log in order to query events as fast as possible
+		$logonXPath = "Event[System[EventID=4624]] and Event[EventData[Data[@Name='TargetDomainName'] != 'Window Manager']] and Event[EventData[Data[@Name='TargetDomainName'] != 'NT AUTHORITY']] and (Event[EventData[Data[@Name='LogonType'] = '2']] or Event[EventData[Data[@Name='LogonType'] = '11']])"
+		$otherXpath = 'Event[System[({0})]]' -f "EventID=$(($ids.where({ $_ -ne '4624' })) -join ' or EventID=')"
+		$xPath = '({0}) or ({1})' -f $logonXPath, $otherXpath
+		
+		$events = Get-WinEvent -ComputerName $ComputerName -LogName $logNames -FilterXPath $xPath
+		Write-Verbose -Message "Found [$($events.Count)] events to look through"
+		
+		$events.foreach({
+			if ($_.Id -in $SessionStartIds)
 			{
-				$computer = $c.Name
-				Write-Verbose -Message "Querying event log(s) of computer [$($computer)]"
-				$logNames = ($SessionEvents.LogName | select -Unique)
-				$ids = $SessionEvents.Id
+				$logonEvtId = $_.Id
+				$xEvt = [xml]$_.ToXml()
+				$Username = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetUserName' }).'#text'
+				$LogonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text'
+				if (-not $LogonId)
+				{
+					$LogonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'LogonId' }).'#text'
+				}
+				$LogonTime = $_.TimeCreated
 				
-				## Build the insane XPath query for the security event log in order to query events as fast as possible
-				$logonXPath = "Event[System[EventID=4624]] and Event[EventData[Data[@Name='TargetDomainName'] != 'Window Manager']] and Event[EventData[Data[@Name='TargetDomainName'] != 'NT AUTHORITY']] and (Event[EventData[Data[@Name='LogonType'] = '2']] or Event[EventData[Data[@Name='LogonType'] = '11']])"
-				$otherXpath = 'Event[System[({0})]]' -f "EventID=$(($ids.where({ $_ -ne '4624' })) -join ' or EventID=')"
-				$xPath = '({0}) or ({1})' -f $logonXPath, $otherXpath
-				
-				$events = Get-WinEvent -ComputerName $computer -LogName $logNames -FilterXPath $xPath
-				Write-Verbose -Message "Found [$($events.Count)] events to look through"
-				
-				$events.foreach({
-					if ($_.Id -in $SessionStartIds)
-					{
-						$logonEvtId = $_.Id
-						$xEvt = [xml]$_.ToXml()
-						$Username = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetUserName' }).'#text'
-						$LogonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text'
-						if (-not $LogonId)
-						{
-							$LogonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'LogonId' }).'#text'
-						}
-						$LogonTime = $_.TimeCreated
-						
-						Write-Verbose -Message "New session start event found: event ID [$($logonEvtId)] username [$($Username)] logonID [$($LogonId)] time [$($LogonTime)]"
-						$SessionEndEvent = $Events.where({
-							$_.TimeCreated -gt $LogonTime -and
-							$_.ID -in $SessionStopIds -and
-							(([xml]$_.ToXml()).Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text' -eq $LogonId
-						}) | select -First 1
-						if (-not $SessionEndEvent) ## This be improved by seeing if this is the latest logon event
-						{
-							#Write-Verbose -Message "Could not find a session end event for logon ID [$($LogonId)]. Assuming most current"
-							Write-Warning "Could not find session end event"
-							#$LogoffTime = Get-Date
-						}
-						else
-						{
-							$LogoffTime = $SessionEndEvent.TimeCreated
-							Write-Verbose -Message "Session stop ID is [$($SessionEndEvent.Id)]"
-							$LogoffId = $SessionEndEvent.Id
-							$output = [ordered]@{
-								'ComputerName' = $_.MachineName
-								'Username' = $Username
-								'StartTime' = $LogonTime
-								'StartAction' = $SessionEvents.where({ $_.ID -eq $logonEvtId }).Label
-								'StopTime' = $LogoffTime
-								'StopAction' = $SessionEvents.where({ $_.ID -eq $LogoffID }).Label
-								'Session Active (Days)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalDays, 2)
-								'Session Active (Min)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalMinutes, 2)
-							}
-							[pscustomobject]$output
-						}
+				Write-Verbose -Message "New session start event found: event ID [$($logonEvtId)] username [$($Username)] logonID [$($LogonId)] time [$($LogonTime)]"
+				$SessionEndEvent = $Events.where({
+					$_.TimeCreated -gt $LogonTime -and
+					$_.ID -in $SessionStopIds -and
+					(([xml]$_.ToXml()).Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text' -eq $LogonId
+				}) | select -First 1
+				if (-not $SessionEndEvent) ## This be improved by seeing if this is the latest logon event
+				{
+					Write-Verbose -Message "Could not find a session end event for logon ID [$($LogonId)]. Assuming most current"
+					#Write-Warning "Could not find session end event"
+					$LogoffTime = Get-Date
+				}
+				else
+				{
+					$LogoffTime = $SessionEndEvent.TimeCreated
+					Write-Verbose -Message "Session stop ID is [$($SessionEndEvent.Id)]"
+					$LogoffId = $SessionEndEvent.Id
+					$output = [ordered]@{
+						'ComputerName' = $_.MachineName
+						'Username' = $Username
+						'StartTime' = $LogonTime
+						'StartAction' = $SessionEvents.where({ $_.ID -eq $logonEvtId }).Label
+						'StopTime' = $LogoffTime
+						'StopAction' = $SessionEvents.where({ $_.ID -eq $LogoffID }).Label
+						'Session Active (Days)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalDays, 2)
+						'Session Active (Min)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalMinutes, 2)
 					}
-				})
+					[pscustomobject]$output
+				}
 			}
-			catch
-			{
-				Write-Error $_.Exception.Message
-			}
-		}
+		})
+	}
+	catch
+	{
+		Write-Error $_.Exception.Message
 	}
 }
 catch
