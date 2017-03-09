@@ -23,6 +23,7 @@ function Save-Acl
     param
     (   
         [Parameter(Mandatory)]
+        [ValidateScript({Test-Path -Path $_ -PathType Container})]
         [string]$FolderPath,
 
         [Parameter(Mandatory)]
@@ -39,13 +40,13 @@ function Save-Acl
             Invoke-ICacls @PSBoundParameters | ForEach-Object {
                 Write-Output $_
             }
-            if (-not (Get-Content -Path $errorsLogFilePath)) {
-                Remove-Item -Path $errorsLogFilePath
-            }
+            Get-Content -Path $errorsLogFilePath | foreach { Write-Error -Message $_ }
         }
         catch
         {
             $PSCmdlet.ThrowTerminatingError($_)
+        } finally {
+            Remove-Item -Path $errorsLogFilePath -ErrorAction SilentlyContinue
         }
     }
 }
@@ -74,13 +75,23 @@ function Restore-Acl
     param
     (
         [Parameter(Mandatory)]
+        [ValidateScript({Test-Path -Path $_ -PathType Container})]
         [string]$RestoreToFolderPath,
 
         [Parameter(Mandatory)]
+        [ValidateScript({Test-Path -Path $_ -PathType Leaf})]
         [string]$PermissionFilePath
     )
-
-    Invoke-ICacls -FolderPath $RestoreToFolderPath -RestoreFilePath $PermissionFilePath
+    try {
+        Invoke-ICacls -FolderPath $RestoreToFolderPath -RestoreFilePath $PermissionFilePath | ForEach-Object {
+            Write-Output $_
+        }
+        Get-Content -Path $errorsLogFilePath | foreach { Write-Error -Message $_ }
+    } catch {
+        $PSCmdlet.ThrowTerminatingError($_)
+    } finally {
+        Remove-Item -Path $errorsLogFilePath -ErrorAction SilentlyContinue
+    }
     
 }
 
@@ -91,18 +102,20 @@ function Invoke-ICacls
     param
     (
         [Parameter()]
+         [ValidateScript({Test-Path -Path $_ -PathType Container})]
         [string]$FolderPath,
 
         [Parameter(ParameterSetName = 'Save')]
         [string]$SaveFilePath,
 
         [Parameter(ParameterSetName = 'Restore')]
+         [ValidateScript({Test-Path -Path $_ -PathType Leaf})]
         [string]$RestoreFilePath
     )
 
     if ($PSCmdlet.ParameterSetName -eq 'Save') {
-        icacls $FolderPath /save "$SaveFilePath" /t /c 2>$errorsLogFilePath
+        icacls "$FolderPath\*" /save $SaveFilePath /t /c 2>$errorsLogFilePath
     } elseif ($PSCmdlet.ParameterSetName -eq 'Restore') {
-        icacls $FolderPath /restore "$RestoreFilePath" /c 2>$errorsLogFilePath
+        icacls $FolderPath /restore $RestoreFilePath /c 2>$errorsLogFilePath
     }   
 }
