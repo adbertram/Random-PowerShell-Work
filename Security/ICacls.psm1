@@ -1,3 +1,28 @@
+<#PSScriptInfo
+	VERSION 1.0
+	GUID 774b207b-ca23-4163-9a26-abe911368cdd
+	AUTHOR Adam Bertram
+	COMPANYNAME Adam the Automator, LLC
+	COPYRIGHT
+	TAGS
+	LICENSEURI
+	PROJECTURI
+	ICONURI
+	EXTERNALMODULEDEPENDENCIES
+	REQUIREDSCRIPTS
+	EXTERNALSCRIPTDEPENDENCIES
+	RELEASENOTES
+#>
+
+
+<#
+    .DESCRIPTION
+        ICacls is a module made up of a few functions to assist in using this helpful, yet overly complicated tool.
+        It is best used when performing data migrations. Using the Save-Acl and Restore-Acl functions allows you to easily
+        point to a entire folder to first save all ACEs to a file and then use that file to restore all of those same
+        ACEs to the files copied in the other location.
+#>
+
 param (
     [Parameter(Mandatory)]
     [ValidateNotNullOrEmpty()]
@@ -14,6 +39,15 @@ $errorsLogFilePath = 'C:\PermissionErrors.txt'
 
 function Save-Acl
 {
+    <#
+        .SYNOPSIS
+            This function uses icacls to recursively retrieves all permissions from all files and folders in a particular 
+            folder path and saves them to a text file.
+    
+        .EXAMPLE
+            PS> Save-Acl -FolderPath \\FILESERVER\FileShare -SaveFilePath C:\FileSharePermissions.txt
+    
+    #>
     [OutputType([void])]
     [CmdletBinding()]
     param
@@ -33,7 +67,7 @@ function Save-Acl
         try
         {
             Invoke-ICacls @PSBoundParameters | ForEach-Object {
-                Write-Log -Line $_
+                Write-Output $_
             }
             if (-not (Get-Content -Path $errorsLogFilePath)) {
                 Remove-Item -Path $errorsLogFilePath
@@ -83,77 +117,5 @@ function Invoke-ICacls
         icacls $FolderPath /save "$SaveFilePath" /t /c 2>$errorsLogFilePath
     } elseif ($PSCmdlet.ParameterSetName -eq 'Restore') {
         icacls $FolderPath /restore "$RestoreFilePath" /c 2>$errorsLogFilePath
-    }
-    
-}
-
-function Write-Log
-{
-    [OutputType([void])]
-    [CmdletBinding()]
-    param
-    (
-        [Parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string]$Line
-    )
-    
-    $logLineParams = @{}
-
-    ## Attempt to find the file/folder path from the line
-    $m = [regex]::Match($Line,'\\(.*)$')
-    if (-not $m.Success) {
-        $logLineParams.Path = $Line
-        $logLineParams.Severity = 'Warning'
-    } else {
-        $fullPath = $m.Groups[1].Value
-        $logLineParams.Path = $fullPath
-        
-        ## Figure out if the path is a file or folder
-        if (($fullPath | Split-Path -Leaf) -match '\.\w+$') {
-            $logLineParams.Type = 'File'
-        } else {
-            $logLineParams.Type = 'Folder'
-        }
-        
-        if ($Line -notmatch '(^processed file)|(^Successfully processed)') {
-            $logLineParams.Severity = 'Error'
-        }
-    }
-    
-    Write-LogLine @logLineParams
-
-}
-
-function Write-LogLine
-{
-    [OutputType([void])]
-    [CmdletBinding()]
-    param
-    (
-        [Parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string]$Path,
-
-        [Parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string]$Type,
-
-        [Parameter()]
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet('Information','Warning','Error')]
-        [string]$Severity = 'Information',
-
-        [Parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string]$LogFilePath = 'C:\PermissionLog.txt'
-    )
-
-    $obj = [pscustomobject]@{
-        Path = $Path
-        Severity = $Severity
-        Type = $Type
-    }
-    $obj | Export-Csv -Path $LogFilePath -Append -NoTypeInformation
-
+    }   
 }
