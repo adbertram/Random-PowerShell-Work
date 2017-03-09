@@ -27,11 +27,15 @@ function ShowMenu
 
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
-		[string]$ChoiceMessage
+		[string]$ChoiceMessage,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$NoMessage
 	)
 
 	$yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", $ChoiceMessage
-	$no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", 'Leave it be.'
+	$no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", $NoMessage
 	$options = [System.Management.Automation.Host.ChoiceDescription[]]($yes, $no)
 	$host.ui.PromptForChoice($Title, $ChoiceMessage, $options, 0)
 }
@@ -170,6 +174,18 @@ a NuGet API key.
 			Write-Verbose -Message "Module passed test: [$($test.TestName)]"
 		}
 	}
+
+	$result = ShowMenu -Title 'PowerShell Gallery Publication' -ChoiceMessage 'Publish it?' -NoMessage 'Do not publish it'
+	switch ($result)
+	{
+		0 {
+			Write-Verbose -Message 'Publishing module...'
+			Publish-Module -Name $module.Name -NuGetApiKey $NuGetApiKey
+			Write-Verbose -Message 'Done.'
+		}
+		1 { Write-Verbose -Message 'Leaving it be...' }
+	}
+
 } catch {
 	Write-Error -Message $_.Exception.Message
 }
