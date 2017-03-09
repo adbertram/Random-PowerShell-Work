@@ -161,6 +161,7 @@ $moduleTests = @(
 			$pesterTestPath = "$($Module.ModuleBase)\$($Module.Name).Tests.ps1"
 			$publicFunctionNames = (Get-Command -Module $Module).Name
 
+			$templateFuncs = ''
 			$templateFuncs += $publicFunctionNames | foreach {
 				@"
 	describe '$_' {
