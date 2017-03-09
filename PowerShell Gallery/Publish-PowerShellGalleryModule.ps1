@@ -13,7 +13,11 @@ param(
 
 	[Parameter()]
 	[ValidateNotNullOrEmpty()]
-	[string]$NuGetApiKey = 'f1212bde-8814-4c78-a2b2-7b80b02ab349'
+	[switch]$RunOptionalTests,
+
+	[Parameter()]
+	[ValidateNotNullOrEmpty()]
+	[string]$NuGetApiKey
 )
 
 function ShowMenu
@@ -29,9 +33,9 @@ function ShowMenu
 		[ValidateNotNullOrEmpty()]
 		[string]$ChoiceMessage,
 
-		[Parameter(Mandatory)]
+		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$NoMessage
+		[string]$NoMessage = 'No thanks'
 	)
 
 	$yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", $ChoiceMessage
@@ -68,6 +72,7 @@ function GetRequiredManifestKeyParams
 $moduleTests = @(
 	@{
 		TestName = 'Module manifest exists'
+		Mandatory = $true
 		FailureMessage = 'The module manifest does not exist at the expected path.'
 		FixMessage = 'Run New-ModuleManifest to create a new manifest'
 		FixAction = { 
@@ -92,6 +97,7 @@ $moduleTests = @(
 	}
 	@{
 		TestName = 'Manifest has all required keys'
+		Mandatory = $true
 		FailureMessage = 'The module manifest does not have all the required keys populated.'
 		FixMessage = 'Run Update-ModuleManifest to update existing manifest'
 		FixAction = { 
@@ -127,6 +133,7 @@ $moduleTests = @(
 	}
 	@{
 		TestName = 'Manifest passes Test-Modulemanifest validation'
+		Mandatory = $true
 		FailureMessage = 'The module manifest does not pass validation with Test-ModuleManifest'
 		FixMessage = 'Run Test-ModuleManifest explicitly to investigate problems discovered'
 		FixAction = {
@@ -136,6 +143,57 @@ $moduleTests = @(
 		TestAction = {
 			param($Module)
 			if (-not (Test-ModuleManifest -Path $Module.Path -ErrorAction SilentlyContinue)) {
+				$false
+			} else {
+				$true
+			}
+		}
+	}
+	@{
+		TestName = 'Pester Tests Exists'
+		Mandatory = $false
+		FailureMessage = 'The module does not have any associated Pester tests.'
+		FixMessage = 'Create a new Pester test file using a common template'
+		FixAction = { 
+			param($Module)
+
+
+			$pesterTestPath = "$($Module.ModuleBase)\$($Module.Name).Tests.ps1"
+			$publicFunctionNames = (Get-Command -Module $Module).Name
+
+			$templateFuncs += $publicFunctionNames | foreach {
+				@"
+	describe '$_' {
+		
+	}
+
+"@
+			}
+
+			$pesterTestTemplate = @'
+#region import modules
+$ThisModule = "$($MyInvocation.MyCommand.Path -replace "\.Tests\.ps1$", '').psm1"
+$ThisModuleName = (($ThisModule | Split-Path -Leaf) -replace ".psm1")
+Get-Module -Name $ThisModuleName -All | Remove-Module -Force
+
+Import-Module -Name $ThisModule -Force -ErrorAction Stop
+
+## If a module is in $Env:PSModulePath and $ThisModule is not, you will have two modules loaded when importing and 
+## InModuleScope does not like that. 0.0 will always be the one imported directly from PSM1.
+@(Get-Module -Name $ThisModuleName).where({{ $_.version -ne "0.0" }}) | Remove-Module -Force
+#endregion
+
+InModuleScope $ThisModuleName {{
+{0}
+}}
+'@ -f $templateFuncs
+
+			Add-Content -Path $pesterTestPath -Value $pesterTestTemplate
+		}
+		TestAction = {
+			param($Module)
+
+			if (-not (Test-Path -Path "$($Module.ModuleBase)\$($Module.Name).Tests.ps1" -PathType Leaf)) {
 				$false
 			} else {
 				$true
@@ -159,7 +217,13 @@ a NuGet API key.
 	## Force the manifest to show up if it exists. This is done as an easy way to bring along a manifest reference
 	$module | Add-Member -MemberType NoteProperty -Name 'Path' -Value "$($module.ModuleBase)\$($Module.Name).psd1" -Force
 	
-	foreach ($test in $moduleTests) {
+	if ($RunOptionalTests.IsPresent) {
+		$whereFilter = { '*' }
+	} else {
+		$whereFilter = { $_.Mandatory }
+	}
+
+	foreach ($test in ($moduleTests | where $whereFilter)) {
 		if (-not (& $test.TestAction -Module $module)) {			
 			$result = ShowMenu -Title $test.FailureMessage -ChoiceMessage "Would you like to resolve this with action: [$($test.FixMessage)]?"
 			switch ($result)
@@ -175,7 +239,8 @@ a NuGet API key.
 		}
 	}
 
-	$result = ShowMenu -Title 'PowerShell Gallery Publication' -ChoiceMessage 'Publish it?' -NoMessage 'Do not publish it'
+
+	$result = ShowMenu -Title 'PowerShell Gallery Publication' -ChoiceMessage 'All mandatory tests have passed. Publish it?' -NoMessage 'Do not publish it'
 	switch ($result)
 	{
 		0 {
