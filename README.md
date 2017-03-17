@@ -1,19 +1,8 @@
 # Random PowerShell Work
-[![licence badge]][licence]
-[![stars badge]][stars]
-[![forks badge]][forks]
-[![issues badge]][issues]
 
-[licence badge]:https://img.shields.io/badge/license-MIT-blue.svg
-[stars badge]:https://img.shields.io/github/stars/adbertram/Random-PowerShell-Work.svg
-[forks badge]:https://img.shields.io/github/forks/adbertram/Random-PowerShell-Work.svg
-[issues badge]:https://img.shields.io/github/issues/adbertram/Random-PowerShell-Work.svg
+[![Donate](./donate.png)](https://www.paypal.me/adbertram/10)
 
-[licence]:https://github.com/adbertram/Random-PowerShell-Work/blob/master/LICENSE.md
-[stars]:https://github.com/adbertram/Random-PowerShell-Work/stargazers
-[forks]:https://github.com/adbertram/Random-PowerShell-Work/network
-[issues]:https://github.com/adbertram/Random-PowerShell-Work/issues
-
+> If you get some use out of my scripts, drop me a few bucks.
 
 This is a conglomeration of PowerShell scripts that I've written over the years. If you'd like more PowerShell awesomeness check out my blog at [Adam, the Automator](http://www.adamtheautomator.com).  This is where I write about automation, lots of PowerShell and post regularly about time-saving tricks with PowerShell.
 
