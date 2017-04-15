@@ -1,4 +1,4 @@
-﻿function New-LogEntry {
+function New-LogEntry {
 	<#
 	.SYNOPSIS
 		This function appends a row to a tab-separated text file with a timestamp, log message and a time
@@ -46,6 +46,7 @@
 			foreach ($Value in $Values) {
 				$Split = $Value.Split(' ')
 				$Value = $Split[0]
+				$Label = $Split[1]
 				if ($AllowedLabels -notcontains $Label) {
 					Write-Error "The label '$Label' is not a valid time label"
 					return $false
@@ -53,7 +54,6 @@
 					Write-Error "The time value '$Value' is not a valid time interval"
 					return $false
 				} else {
-					$Label = $Split[1]
 					## Make the label plural (if it's not already) to match New-TimeSpan's property name
 					if ($Label.Substring($Label.Length - 1, 1) -ne 's') {
 						$Label = $Label + 's'
