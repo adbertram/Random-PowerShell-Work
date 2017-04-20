@@ -1,4 +1,4 @@
-﻿function Get-Weekday {
+﻿function Get-WeekdayFrom {
 		<#
 		.SYNOPSIS
 			This function translate a loosely structured weekday reference to a structured Powershell
