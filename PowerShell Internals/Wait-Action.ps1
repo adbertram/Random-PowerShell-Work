@@ -1,4 +1,38 @@
-# .ExternalHelp C:\Dropbox\GitRepos\Random-PowerShell-Work\PowerShell Internals\Wait-Action-Help.xml
+<#PSScriptInfo
+	.VERSION 1.0
+	.GUID 389989f2-626a-45cc-aa5c-2df2f93cee03
+	.AUTHOR Adam Bertram
+	.COMPANYNAME Adam the Automator, LLC
+	.PROJECTURI https://github.com/adbertram/Random-PowerShell-Work/blob/master/PowerShell%20Internals/Wait-Action.ps1
+#>
+
+<#
+	.SYNOPSIS
+		A script to wait for an action to finish.
+
+	.DESCRIPTION
+		This script executes a scriptblock represented by the Condition parameter continually while the result returns 
+		anything other than $false or $null.
+
+	.PARAMETER Condition
+		 A mandatory scriptblock parameter representing the code to execute to check the action condition. This code 
+		 will be continually executed until it returns $false or $null.
+	
+	.PARAMETER Timeout
+		 A mandatory integer represneting the time (in seconds) to wait for the condition to complete.
+
+	.PARAMETER ArgumentList
+		 An optional collection of one or more objects to pass to the scriptblock at run time. To use this parameter, 
+		 be sure you have a param() block in the Condition scriptblock to accept these parameters.
+
+	.PARAMETER RetryInterval
+		 An optional integer representing the time (in seconds) between the code execution in Condition.
+
+	.EXAMPLE
+		PS> Wait-Action -Condition { (Get-Job).State | where { $_ -ne 'Running' } -Timeout 10
+		
+		This example will wait for all background jobs to complete for up to 10 seconds.
+#>
 
 [OutputType([void])]
 [CmdletBinding()]
@@ -20,7 +54,6 @@ param
 	[ValidateNotNullOrEmpty()]
 	[int]$RetryInterval = 5
 )
-$ErrorActionPreference = 'Stop'
 try
 {
 	$timer = [Diagnostics.Stopwatch]::StartNew()
@@ -39,8 +72,4 @@ try
 catch
 {
 	Write-Error -Message $_.Exception.Message
-}
-finally
-{
-	$ErrorActionPreference = 'Continue'
 }
