@@ -1,0 +1,87 @@
+﻿ <?xml version="1.0" encoding="utf-8"?>
+<helpItems xmlns="http://msh" schema="maml">
+	<command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10">
+		<!-- Command-->
+		<command:details>
+			<command:name>Wait-Action</command:name>
+			<maml:description>
+				<maml:para>This script executes a scriptblock represented by the Condition parameter continually while the result returns anything other than $false or $null.</maml:para>
+			</maml:description>
+			<maml:copyright>
+				<maml:para />
+			</maml:copyright>
+			<command:verb>Wait</command:verb>
+			<command:noun>Action</command:noun>
+			<dev:version />
+		</command:details>
+		<maml:description>
+			<maml:para />
+		</maml:description>
+		<command:syntax>
+			<!-- Parameter Sets-->
+			<command:syntaxItem>
+				<maml:name>Wait-Action</maml:name>
+			</command:syntaxItem>
+		</command:syntax>
+		<command:parameters>
+			<!-- All Parameters-->
+			<command:parameter required="false" globbing="false" pipelineInput="false" variableLength="false" position="named">
+				<maml:name>Condition</maml:name>
+				<maml:description>
+					<maml:para>A scriptblock parameter representing the code to execute to check the action condition. This code will be continually executed until it returns $false or $null.</maml:para>
+				</maml:description>
+				<command:parameterValue required="false" variableLength="false">scriptblock</command:parameterValue>
+				<dev:defaultValue></dev:defaultValue>
+			</command:parameter>
+			<command:parameter required="false" globbing="false" pipelineInput="false" variableLength="false" position="named">
+				<maml:name>Timeout</maml:name>
+				<maml:description>
+					<maml:para>An integer represneting the time (in seconds) to wait for the condition to complete.</maml:para>
+				</maml:description>
+				<command:parameterValue required="false" variableLength="false">int</command:parameterValue>
+				<dev:defaultValue></dev:defaultValue>
+			</command:parameter>
+			<command:parameter required="false" globbing="false" pipelineInput="false" variableLength="false" position="named">
+				<maml:name>RetryInterval</maml:name>
+				<maml:description>
+					<maml:para>The time (in seconds) between the code execution in Condition.</maml:para>
+				</maml:description>
+				<command:parameterValue required="false" variableLength="false">int</command:parameterValue>
+				<dev:defaultValue>5</dev:defaultValue>
+			</command:parameter>
+			<command:parameter required="false" globbing="false" pipelineInput="false" variableLength="false" position="named">
+				<maml:name>ArgumentList</maml:name>
+				<maml:description>
+					<maml:para>An collection of one or more objects to pass to the scriptblock at run time. To use this parameter, be sure you have a param() block in the Condition scriptblock to accept these parameters.</maml:para>
+				</maml:description>
+				<command:parameterValue required="false" variableLength="false">object[]</command:parameterValue>
+				<dev:defaultValue></dev:defaultValue>
+			</command:parameter>
+		</command:parameters>
+		<command:returnValues>
+			<!-- Outputs-->
+			<command:returnValue>
+				<dev:type>
+					<maml:name>None</maml:name>
+					<maml:uri />
+				</dev:type>
+				<maml:description>
+					<maml:para />
+				</maml:description>
+			</command:returnValue>
+		</command:returnValues>
+		<command:examples>
+			<!-- Examples-->
+			<command:example>
+				<maml:title>EXAMPLE 1</maml:title>
+				<maml:introduction>
+					<maml:para />
+				</maml:introduction>
+				<dev:code>C:\PS&gt; Wait-Action -Condition { (Get-Job).State | where {$_ -notmatch 'Completed|Failed' } -Timeout 10</dev:code>
+				<dev:remarks>
+					<maml:para>This example will wait for all background jobs to complete for up to 10 seconds.</maml:para>
+				</dev:remarks>
+			</command:example>
+		</command:examples>
+	</command:command>
+</helpItems>
