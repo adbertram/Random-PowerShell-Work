@@ -95,6 +95,60 @@ function Install-SqlServerCumulativeUpdate
 	}
 }
 
+function TestSqlServerServicePack
+{
+	<#
+	.SYNOPSIS
+		This is a small helper function that returns a boolean $true or $false depending on if the SQL server version
+		installed on a computer matches a particular service pack number.
+
+	.EXAMPLE
+		PS> TestSqlServerServicePack -ComputerName VM1 -ServicePackNumber 1
+
+		This example connects to VM1 to obtain the SQL version installed. If the service pack installed is equal to
+		or less than -ServicePackNumber, it will return $false other, it will return $true.
+
+	.PARAMETER ComputerName
+		A mandatory string parameter representing SQL server to connect to.
+
+	.PARAMETER ServicePackNumber
+		A mandatory integer paramter representing the service pack number to compare against the currently installed
+		service pack.
+	#>
+	[OutputType([bool])]
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$ComputerName,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[int]$ServicePackNumber
+	)
+	process {
+		try
+		{
+			$currentVersion = Get-SQLServerVersion -ComputerName $ComputerName
+			if ($currentVersion.ServicePack -lt $ServicePackNumber)
+			{
+				Write-Verbose -Message "The server [$($ComputerName)'s'] service pack [$($currentVersion.ServicePack)] is older than [$($ServicePackNumber)]"
+				$false
+			}
+			else
+			{
+				Write-Verbose -Message "The server [$($ComputerName)'s'] service pack [$($currentVersion.ServicePack)] is newer or equal to [$($ServicePackNumber)]"
+				$true
+			}
+		}
+		catch
+		{
+			Write-Error -Message $_.Exception.Message
+		}
+	}
+}
+
 function Install-SqlServerServicePack
 {
 	<#
@@ -270,10 +324,45 @@ function Get-SQLServerVersion
 			Write-Error -Message $_.Exception.Message
 		}
 	}
-	end
+}
+
+function ConvertTo-VersionObject
+{
+	<#
+	.SYNOPSIS
+		ConvertTo-VersionObject takes a version input like 11.1.4.5 and converts this into a "friendly" output showing what
+		major version, service pack and cumulative update this version applies to.
+	#>
+	[OutputType([System.Management.Automation.PSCustomObject])]
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[version]$Version
+	)
+	process
 	{
-		Write-Log -Source $MyInvocation.MyCommand -Message ('{0}: Exiting' -f $MyInvocation.MyCommand)
-		$ErrorActionPreference = 'Continue'
+		try
+		{
+			$impCsvParams = @{
+				'Path' = "$PSScriptRoot\sqlversions.csv"
+			}
+
+			$filterScript = { $_.FullVersion -le "$($Version.Major).00.$($Version.Build)" }
+
+			$selectParams = @{
+				'Last' = 1
+				'Property' = '*', @{ Name = 'ServicePack'; Expression = { if ($_.ServicePack -eq 0) { $null } else { $_.ServicePack} } }
+				'ExcludeProperty' = 'ServicePack'
+
+			}
+			(Import-Csv @impCsvParams | Sort-Object FullVersion).Where($filterScript) | Select-Object @selectParams
+		}
+		catch
+		{
+			Write-Error -Message $_.Exception.Message
+		}
 	}
 }
 
@@ -494,7 +583,7 @@ function Get-SQLInstanceDetail
 				$isCluster = $true;
 				$instanceRegCluster = $instanceReg.OpenSubKey('Cluster');
 				$clusterName = $instanceRegCluster.GetValue('ClusterName');
-				Write-Log -Source $MyInvocation.MyCommand -Message "Getting cluster node names";
+				Write-Verbose -Message "Getting cluster node names";
 				$clusterReg = $reg.OpenSubKey("Cluster\\Nodes");
 				$clusterNodes = $clusterReg.GetSubKeyNames();
 				if ($clusterNodes)
@@ -870,12 +959,6 @@ function Get-LatestSqlServerServicePackVersion
 		[ValidateSet('2008R2', '2012', '2014')]
 		[string]$SqlServerVersion
 	)
-	begin
-	{
-		Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-		Write-Log -Source $MyInvocation.MyCommand -Message "$($MyInvocation.MyCommand) : Entering"
-		$ErrorActionPreference = 'Stop'
-	}
 	process
 	{
 		try
@@ -886,11 +969,6 @@ function Get-LatestSqlServerServicePackVersion
 		{
 			Write-Error -Message $_.Exception.Message
 		}
-	}
-	end
-	{
-		Write-Log -Source $MyInvocation.MyCommand -Message ('{0}: Exiting' -f $MyInvocation.MyCommand)
-		$ErrorActionPreference = 'Continue'
 	}
 }
 
@@ -917,11 +995,6 @@ function Update-SqlServer
 		[ValidateNotNullOrEmpty()]
 		[pscredential]$Credential
 	)
-	begin {
-		Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-		Write-Log -Source $MyInvocation.MyCommand -Message "$($MyInvocation.MyCommand) : Entering"
-		$ErrorActionPreference = 'Stop'
-	}
 	process {
 		try
 		{
@@ -958,10 +1031,6 @@ function Update-SqlServer
 			Write-Error -Message $_.Exception.Message
 		}
 	}
-	end {
-		Write-Log -Source $MyInvocation.MyCommand -Message ('{0}: Exiting' -f $MyInvocation.MyCommand)
-		$ErrorActionPreference = 'Continue'
-	}
 }
 
 function Invoke-Program
@@ -978,7 +1047,7 @@ function Invoke-Program
 		[string]$ComputerName = 'localhost',
 
 		[Parameter()]
-		[pscredential]$Credential = (Get-KeystoreCredential -Name 'LOCAL\Administrator'),
+		[pscredential]$Credential,
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
@@ -995,15 +1064,6 @@ function Invoke-Program
 		[ValidateNotNullOrEmpty()]
 		[uint32[]]$SuccessReturnCodes = @(0, 3010)
 	)
-
-	begin
-	{
-		Set-StrictMode -Version Latest
-		Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-		Write-Log -Source $MyInvocation.MyCommand -Message ('{0}: Entering' -f $MyInvocation.MyCommand);
-		$ErrorActionPreference = [System.Management.Automation.ActionPreference]::Stop
-	}
-
 	process
 	{
 		try
@@ -1014,29 +1074,14 @@ function Invoke-Program
 			$icmParams = @{
 				ComputerName = $ComputerName;
 			}
-			if (-not (Test-LocalComputer -ComputerName $ComputerName))
+
+			$icmParams.Authentication = 'CredSSP'
+			if ($PSBoundParameters.ContainsKey('Credential'))
 			{
-				$icmParams.Authentication = 'CredSSP'
-				$icmParams.Credential = $Credential
-				
-				#region Enable CredSSP in server mode on the remote machine if it is not already enabled
-				Write-Log -Source $MyInvocation.MyCommand -Message "Enabling CredSSP on $ComputerName";
-				
-				# Setup error variable for catching errors thrown by the Invoke-Command cmdlet.
-				$err = @();
-				Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-					$null = Enable-WSManCredSSP -Role Server -Force;
-				} -Credential $Credential -ErrorAction SilentlyContinue -ErrorVariable err;
-				
-				# Check if any errors occurred.
-				if ($err)
-				{
-					throw $err;
-				}
-				#endregion Enable CredSSP in server mode on the remote machine if it is not already enabled
+				$icmParams.Credential = $Credential	
 			}
 			
-			Write-Log -Source $MyInvocation.MyCommand -Message "Acceptable success return codes are [$($SuccessReturnCodes -join ',')]"
+			Write-Verbose -Message "Acceptable success return codes are [$($SuccessReturnCodes -join ',')]"
 			
 			$icmParams.ScriptBlock = {
 				$VerbosePreference = $using:VerbosePreference
@@ -1081,13 +1126,12 @@ function Invoke-Program
 			}
 			
 			# Run program on specified computer.
-			Write-Log -Source $MyInvocation.MyCommand -Message "Running command line [$FilePath $ArgumentList] on $ComputerName";
+			Write-Verbose -Message "Running command line [$FilePath $ArgumentList] on $ComputerName";
 			
 			$params = @{
 				'ComputerName' = $ComputerName
 				'Credential' = $Credential
 			}
-			$null = Wait-WinRM @params
 			$result = Invoke-Command @icmParams
 			
 			# Check if any errors occurred.
@@ -1098,13 +1142,7 @@ function Invoke-Program
 		}
 		catch
 		{
-			Write-Log -Source $MyInvocation.MyCommand -EventId 1003 -EntryType Error -Message $_.Exception.ToString();
+			Write-Error -Message $_.Exception.Message
 		}
 	}
-
-	end
-	{
-		Write-Log -Source $MyInvocation.MyCommand -Message ('{0}: Exiting' -f $MyInvocation.MyCommand)
-	}
-
 }
