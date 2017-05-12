@@ -192,7 +192,6 @@ function Install-SqlServerServicePack
 	(
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
-		[ValidatePattern('^([\w-]+\.){2}\w+$')]
 		[string]$ComputerName,
 		
 		[Parameter(Mandatory, ParameterSetName = 'Number')]
