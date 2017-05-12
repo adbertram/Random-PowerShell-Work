@@ -1,3 +1,98 @@
+function ShowMenu
+{
+	<#
+		.SYNOPSIS
+			A helper function to display a menu when a test fails.
+	
+		.EXAMPLE
+			PS> ShowMenu -Title 'What to do' -ChoiceMessage 'Should I do it?'
+	
+	#>
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$Title,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$ChoiceMessage,
+
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[string]$NoMessage = 'No thanks'
+	)
+
+	$yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", $ChoiceMessage
+	$no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", $NoMessage
+	$options = [System.Management.Automation.Host.ChoiceDescription[]]($yes, $no)
+	PromptChoice -Title $Title -ChoiceMessage $ChoiceMessage -options $options
+}
+
+function PromptChoice {
+	param(
+		$Title,
+		$ChoiceMessage,
+		$Options
+	)
+	$host.ui.PromptForChoice($Title, $ChoiceMessage, $options, 0)
+}
+
+function GetRequiredManifestKeyParams
+{
+	<#
+		.SYNOPSIS
+			A helper function to retrieve values for the required manifest keys from the user.
+	
+		.EXAMPLE
+			PS> GetRequiredManifestKeyParams
+	
+	#>
+	[CmdletBinding()]
+	param
+	(
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[string[]]$RequiredKeys = @('Description','Version','ProjectUri','Author')
+	)
+	
+	$paramNameMap = @{
+		Version = 'ModuleVersion'
+		Description = 'Description'
+		Author = 'Author'
+		ProjectUri = 'ProjectUri'
+	}
+	$params = @{ }
+	foreach ($val in $RequiredKeys) {
+		$result = Read-Host -Prompt "Input value for module manifest key: [$val]"
+		$paramName = $paramNameMap.$val
+		$params.$paramName = $result
+	}
+	$params
+}
+
+function Invoke-Test {
+	param(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$TestName,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[ValidateSet('Test','Fix')]
+		[string]$Action,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[object]$Module
+	)
+	
+	$testHt = $moduleTests | where { $_.TestName -eq $TestName}
+	$actionName = '{0}{1}' -f $Action,'Action'
+	& $testHt.$actionName -Module $Module
+}
+
 function Publish-PowerShellGalleryModule {
 	<#
 		.SYNOPSIS
@@ -71,101 +166,6 @@ function Publish-PowerShellGalleryModule {
 		[ValidateNotNullOrEmpty()]
 		[switch]$PublishToGallery
 	)
-
-	function ShowMenu
-	{
-		<#
-			.SYNOPSIS
-				A helper function to display a menu when a test fails.
-		
-			.EXAMPLE
-				PS> ShowMenu -Title 'What to do' -ChoiceMessage 'Should I do it?'
-		
-		#>
-		[CmdletBinding()]
-		param
-		(
-			[Parameter(Mandatory)]
-			[ValidateNotNullOrEmpty()]
-			[string]$Title,
-
-			[Parameter(Mandatory)]
-			[ValidateNotNullOrEmpty()]
-			[string]$ChoiceMessage,
-
-			[Parameter()]
-			[ValidateNotNullOrEmpty()]
-			[string]$NoMessage = 'No thanks'
-		)
-
-		$yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", $ChoiceMessage
-		$no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", $NoMessage
-		$options = [System.Management.Automation.Host.ChoiceDescription[]]($yes, $no)
-		PromptChoice -Title $Title -ChoiceMessage $ChoiceMessage -options $options
-	}
-
-	function PromptChoice {
-		param(
-			$Title,
-			$ChoiceMessage,
-			$Options
-		)
-		$host.ui.PromptForChoice($Title, $ChoiceMessage, $options, 0)
-	}
-
-	function GetRequiredManifestKeyParams
-	{
-		<#
-			.SYNOPSIS
-				A helper function to retrieve values for the required manifest keys from the user.
-		
-			.EXAMPLE
-				PS> GetRequiredManifestKeyParams
-		
-		#>
-		[CmdletBinding()]
-		param
-		(
-			[Parameter()]
-			[ValidateNotNullOrEmpty()]
-			[string[]]$RequiredKeys = @('Description','Version','ProjectUri','Author')
-		)
-		
-		$paramNameMap = @{
-			Version = 'ModuleVersion'
-			Description = 'Description'
-			Author = 'Author'
-			ProjectUri = 'ProjectUri'
-		}
-		$params = @{ }
-		foreach ($val in $RequiredKeys) {
-			$result = Read-Host -Prompt "Input value for module manifest key: [$val]"
-			$paramName = $paramNameMap.$val
-			$params.$paramName = $result
-		}
-		$params
-	}
-
-	function Invoke-Test {
-		param(
-			[Parameter(Mandatory)]
-			[ValidateNotNullOrEmpty()]
-			[string]$TestName,
-
-			[Parameter(Mandatory)]
-			[ValidateNotNullOrEmpty()]
-			[ValidateSet('Test','Fix')]
-			[string]$Action,
-
-			[Parameter(Mandatory)]
-			[ValidateNotNullOrEmpty()]
-			[object]$Module
-		)
-		
-		$testHt = $moduleTests | where { $_.TestName -eq $TestName}
-		$actionName = '{0}{1}' -f $Action,'Action'
-		& $testHt.$actionName -Module $Module
-	}
 
 	<# 
 	Here are all of the individual tests. This is where you can add additional mandatory or optional tests depending on the
