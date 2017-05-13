@@ -62,10 +62,4 @@ function Invoke-WindowsDiskCleanup {
 
 	Write-Log -Message 'Waiting for CleanMgr and DismHost processes...'
 	Get-Process -Name cleanmgr,dismhost -ErrorAction SilentlyContinue | Wait-Process
-
-	if (Test-Path $env:SystemRoot\Logs\CBS\DeepClean.log) {
-		if (Select-String -Path $env:SystemRoot\Logs\CBS\DeepClean.log -Pattern 'Total size of superseded packages:' -Quiet) {
-
-		}
-	}
 }
