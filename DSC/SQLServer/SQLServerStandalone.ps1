@@ -3,7 +3,22 @@
 Configuration SQLStandalone
 {
     param(
-        [pscredential]$SetupCredential ## Need to pass a credential for setup
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[pscredential]$SetupCredential,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[ValidatePattern('sxs$')]
+		[string]$WindowsServerSource,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$SqlServerInstallSource,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$SysAdminAccount
     )
     ## Download the xSQLServer module from the PowerShell Gallery
     Import-DscResource -Module xSQLServer
@@ -16,7 +31,7 @@ Configuration SQLStandalone
         {
             Ensure = "Present"
             Name = "NET-Framework-Core"
-            Source = "\MEMBERSRV1InstallersWindowsServer2012R2sourcessxs"
+            Source = $WindowsServerSource
         }
 
         ## Have DSC grab install bits from the SourcePath, install under the instance name with the features
@@ -24,18 +39,18 @@ Configuration SQLStandalone
         xSqlServerSetup 'SqlServerSetup'
         {
             DependsOn = "[WindowsFeature]NET-Framework-Core"
-            SourcePath = '\MEMBERSRV1InstallersSqlServer2016'
+            SourcePath = $SqlServerInstallSource
             SetupCredential = $SetupCredential
             InstanceName = 'MSSQLSERVER'
             Features = 'SQLENGINE,FULLTEXT,RS,AS,IS'
-            SQLSysAdminAccounts = 'mylab.localAdministrator'
+            SQLSysAdminAccounts = $SysAdminAccount
         }
 
         ## Add firewall exceptions for SQL Server but run SQL server setup first.
         xSqlServerFirewall 'SqlFirewall'
         {
             DependsOn = '[xSqlServerSetup]SqlServerSetup'
-            SourcePath = '\MEMBERSRV1InstallersSqlServer2016'
+            SourcePath = $SqlServerInstallSource
             InstanceName = 'MSSQLSERVER'
             Features = 'SQLENGINE,FULLTEXT,RS,AS,IS'
         }
@@ -46,5 +61,5 @@ if (-not (Get-Module -Name xSqlServer -ListAvailable)) {
 	Install-Module -Name 'xSqlServer' -Confirm:$false
 }
 
-SQLStandAlone
+SQLStandAlone -SetupCredential (Get-Credential) -WindowServerSource '' -SqlServerInstallSource '' -SysAdminAccount '' -ConfigurationData '.\ConfiguraitonData.psd1'
 Start-DscConfiguration –Wait –Force –Path '.\SQLStandalone' –Verbose
