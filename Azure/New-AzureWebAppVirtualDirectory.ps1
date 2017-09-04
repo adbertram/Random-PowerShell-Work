@@ -22,8 +22,6 @@ param(
 	[bool]$PreloadEnabled = $false
 )
 
-Login-AzurerRmAccount
-
 $webApp = Get-AzureRmWebApp -Name $AzureWebAppName -ResourceGroupName $AzureResourceGroup
 
 $VirtualPath = $VirtualPath.Replace('\', '/')
