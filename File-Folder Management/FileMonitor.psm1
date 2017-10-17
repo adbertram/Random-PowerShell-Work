@@ -12,7 +12,7 @@
 	#>
 	[CmdletBinding()]
 	param (
-		[Parameter(Mandatory,ValueFromPipeline)]
+		[Parameter(Mandatory, ValueFromPipeline)]
 		[System.Object]$InputObject
 	)
 	process {
@@ -75,7 +75,7 @@ function New-FileMonitor {
 			
 			## Subscribe to the WMI event using the WMI filter query created above
 			$WmiFilterParams = @{
-				'Class' = '__EventFilter'
+				'Class'     = '__EventFilter'
 				'Namespace' = 'root\subscription'
 				'Arguments' = @{ Name = $Name; EventNameSpace = 'root\cimv2'; QueryLanguage = 'WQL'; Query = $WmiEventFilterQuery }
 			}
@@ -92,7 +92,7 @@ function New-FileMonitor {
 			
 			## Create the WMI event consumer which will actually consume the event
 			$WmiConsumerParams = @{
-				'Class' = 'ActiveScriptEventConsumer'
+				'Class'     = 'ActiveScriptEventConsumer'
 				'Namespace' = 'root\subscription'
 				'Arguments' = @{ Name = $Name; ScriptFileName = $VbsScriptFilePath; ScriptingEngine = 'VBscript' }
 			}
@@ -100,7 +100,7 @@ function New-FileMonitor {
 			$WmiConsumer = Set-WmiInstance @WmiConsumerParams
 			
 			$WmiFilterConsumerParams = @{
-				'Class' = '__FilterToConsumerBinding'
+				'Class'     = '__FilterToConsumerBinding'
 				'Namespace' = 'root\subscription'
 				'Arguments' = @{ Filter = $WmiEventFilterPath; Consumer = $WmiConsumer }
 			}
@@ -140,7 +140,7 @@ function Get-FileMonitor {
 			$Monitor.Consumer = Get-WmiObject @ConsumerParams
 			if (($Monitor.Values | where { $_ }).Count -eq $Monitor.Keys.Count) {
 				[pscustomobject]$Monitor
-			} elseif (($Monitor.Values | where { !$_ }).Count -eq $Monitor.Keys.Count) {
+			} elseif (-not $Monitor.Binding -and -not $Monitor.Filter) {
 				$null
 			} else {
 				throw 'Mismatch between binding, filter and consumer names exists'	
