@@ -88,7 +88,7 @@ function New-FileMonitor {
 				Set objShell = CreateObject(`"Wscript.shell`")`r`n
 				objShell.run(`"powershell.exe -NoProfile -WindowStyle Hidden -executionpolicy bypass -file `"`"$ScriptFilePath`"`"`")
 			"
-			Add-Content -Path $VbsScriptFilePath -Value $VbsScript
+			Set-Content -Path $VbsScriptFilePath -Value $VbsScript
 			
 			## Create the WMI event consumer which will actually consume the event
 			$WmiConsumerParams = @{
