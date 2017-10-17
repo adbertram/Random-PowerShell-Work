@@ -138,9 +138,9 @@ function Get-FileMonitor {
 			$Monitor.Binding = Get-WmiObject @BindingParams
 			$Monitor.Filter = Get-WmiObject @FilterParams
 			$Monitor.Consumer = Get-WmiObject @ConsumerParams
-			if (($Monitor.Values | where { $_ }).Count -eq $Monitor.Keys.Count) {
+			if (@($Monitor.Values | where { $_ }).Count -eq $Monitor.Keys.Count) {
 				[pscustomobject]$Monitor
-			} elseif (-not $Monitor.Binding -and -not $Monitor.Filter) {
+			} elseif (-not $Monitor.Consumer -and -not $Monitor.Filter) {
 				$null
 			} else {
 				throw 'Mismatch between binding, filter and consumer names exists'	
