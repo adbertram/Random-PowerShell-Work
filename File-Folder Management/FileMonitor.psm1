@@ -48,30 +48,35 @@ function New-FileMonitor {
 	param (
 		[Parameter(Mandatory)]
 		[string]$Name,
+
 		[Parameter(Mandatory)]
 		[string]$MonitorInterval,
+
 		[Parameter(Mandatory)]
 		[string]$FolderPath,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[ValidateSet('Modification', 'Creation')]
+		[string]$EventType,
+
 		[Parameter(Mandatory)]
 		[ValidateScript({ Test-Path -Path $_ -PathType 'Leaf' })]
 		[ValidatePattern('.*\.ps1')]
 		[string]$ScriptFilePath,
+
 		[ValidatePattern('.*\.vbs')]
 		[string]$VbsScriptFilePath = "$($env:TEMP)\FileMonitor.vbs"
 	)
 	process {
 		try {
-			## Break apart the drive and path to meet WMI specs
-			$Drive = $FolderPath | Split-Path -Qualifier
-			$FolderPath = "$($FolderPath | Split-Path -NoQualifier)\".Replace('\', '\\')
-			
 			## Create the event query to monitor only the folder we want.  Also, set the monitor interval
 			## to something like 10 seconds to check the folder every 10 seconds.
-			$WmiEventFilterQuery = "
-	 			SELECT * FROM __InstanceCreationEvent WITHIN $MonitorInterval
-	 			WHERE targetInstance ISA 'CIM_DataFile' 
-	 			AND targetInstance.Drive = `"$Drive`"
-				AND targetInstance.Path = `"$FolderPath`""
+			$WmiEventFilterQuery = @'
+SELECT * FROM __Instance{0}Event WITHIN {1}
+WHERE targetInstance ISA 'CIM_DirectoryContainsFile'
+and TargetInstance.GroupComponent = 'Win32_Directory.Name="{2}"'
+'@ -f $EventType, $MonitorInterval, ($FolderPath -replace '\\+$').Replace('\', '\\')
 			
 			## Subscribe to the WMI event using the WMI filter query created above
 			$WmiFilterParams = @{
@@ -86,7 +91,7 @@ function New-FileMonitor {
 			## WMI events cannot auto-trigger another PowerShell script.
 			$VbsScript = "
 				Set objShell = CreateObject(`"Wscript.shell`")`r`n
-				objShell.run(`"powershell.exe -NoProfile -WindowStyle Hidden -executionpolicy bypass -file `"`"$ScriptFilePath`"`"`")
+				objShell.run(`"powershell.exe -NonInteractive -NoProfile -WindowStyle Hidden -executionpolicy bypass -file `"`"$ScriptFilePath`"`"`")
 			"
 			Set-Content -Path $VbsScriptFilePath -Value $VbsScript
 			
@@ -94,7 +99,7 @@ function New-FileMonitor {
 			$WmiConsumerParams = @{
 				'Class'     = 'ActiveScriptEventConsumer'
 				'Namespace' = 'root\subscription'
-				'Arguments' = @{ Name = $Name; ScriptFileName = $VbsScriptFilePath; ScriptingEngine = 'VBscript' }
+				'Arguments' = @{ Name = $Name; ScriptFileName = $VbsScriptFilePath; ScriptingEngine = 'VBScript' }
 			}
 			Write-Verbose -Message "Creating WMI consumer using script file name $VbsScriptFilePath"
 			$WmiConsumer = Set-WmiInstance @WmiConsumerParams
@@ -138,7 +143,7 @@ function Get-FileMonitor {
 			$Monitor.Binding = Get-WmiObject @BindingParams
 			$Monitor.Filter = Get-WmiObject @FilterParams
 			$Monitor.Consumer = Get-WmiObject @ConsumerParams
-			if (@($Monitor.Values | where { $_ }).Count -eq $Monitor.Keys.Count) {
+			if ($Monitor.Consumer -and $Monitor.Filter) {
 				[pscustomobject]$Monitor
 			} elseif (-not $Monitor.Consumer -and -not $Monitor.Filter) {
 				$null
