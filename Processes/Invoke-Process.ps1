@@ -40,7 +40,6 @@ function Invoke-Process {
 	} catch {
 		$PSCmdlet.ThrowTerminatingError($_)
 	} finally {
-		Remove-Item -Path $stdOutTempFile.FullName, $stdErrTempFile.FullName -Force
-		$ErrorActionPreference = 'Continue'
+		Remove-Item -Path $stdOutTempFile, $stdErrTempFile -Force
 	}
 }
