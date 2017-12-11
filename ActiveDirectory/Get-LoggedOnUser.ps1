@@ -42,7 +42,7 @@
 					UserName = 'Unknown'
 					ComputerStatus = 'Offline'
 				}
-				if (Test-Connnection -ComputerName $comp -Count 1 -Quiet) {
+				if (Test-Connection -ComputerName $comp -Count 1 -Quiet) {
 					$output.UserName = (Get-WmiObject -Class win32_computersystem -ComputerName $comp).UserName
 				}
 				[pscustomobject]$output
