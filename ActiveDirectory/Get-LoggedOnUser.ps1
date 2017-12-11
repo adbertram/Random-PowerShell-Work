@@ -24,7 +24,6 @@
 	param
 	(
 		[Parameter()]
-		[ValidateScript({ Test-Connection -ComputerName $_ -Quiet -Count 1 })]
 		[ValidateNotNullOrEmpty()]
 		[string[]]$ComputerName = $env:COMPUTERNAME
 	)
@@ -38,9 +37,15 @@
 		{
 			foreach ($comp in $ComputerName)
 			{
-				$output = @{ 'ComputerName' = $comp }
-				$output.UserName = (Get-WmiObject -Class win32_computersystem -ComputerName $comp).UserName
-				[PSCustomObject]$output
+				$output = @{ 
+					ComputerName = $comp 
+					UserName = 'Unknown'
+					ComputerStatus = 'Offline'
+				}
+				if (Test-Connnection -ComputerName $comp -Count 1 -Quiet) {
+					$output.UserName = (Get-WmiObject -Class win32_computersystem -ComputerName $comp).UserName
+				}
+				[pscustomobject]$output
 			}
 		}
 		catch
