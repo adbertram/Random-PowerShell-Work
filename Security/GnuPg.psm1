@@ -1,5 +1,4 @@
-﻿function Install-GnuPg
-{
+﻿function Install-GnuPg {
 	<#
 	.SYNOPSIS
 		This function installed the GnuPg for Windows application.  It the installer file is not in
@@ -36,33 +35,25 @@
 		[string]$DownloadUrl = 'http://files.gpg4win.org/gpg4win-2.2.5.exe'
 		
 	)
-	process
-	{
-		try
-		{
+	process {
+		try {
 			$DownloadFilePath = "$DownloadFolderPath\$($DownloadUrl | Split-Path -Leaf)"
-			if (-not (Test-Path -Path $DownloadFilePath -PathType Leaf))
-			{
+			if (-not (Test-Path -Path $DownloadFilePath -PathType Leaf)) {
 				Write-Verbose -Message "Downloading [$($DownloadUrl)] to [$($DownloadFilePath)]"
 				Invoke-WebRequest -Uri $DownloadUrl -OutFile $DownloadFilePath
-			}
-			else
-			{
+			} else {
 				Write-Verbose -Message "The download file [$($DownloadFilePath)] already exists"
 			}
 			Write-Verbose -Message 'Attempting to install GPG4Win...'
 			Start-Process -FilePath $DownloadFilePath -ArgumentList '/S' -NoNewWindow -Wait -PassThru
 			Write-Verbose -Message 'GPG4Win installed'
-		}
-		catch
-		{
+		} catch {
 			Write-Error $_.Exception.Message
 		}
 	}
 }
 
-function Add-Encryption
-{
+function Add-Encryption {
 	<#
 	.SYNOPSIS
 		This function uses the GnuPG for Windows application to symmetrically encrypt a set of files in a folder.
@@ -108,23 +99,19 @@ function Add-Encryption
 		
 	)
 	process {
-		try
-		{
+		try {
 			Get-ChildItem -Path $FolderPath | foreach {
 				Write-Verbose -Message "Encrypting [$($_.FullName)]"
-				Start-Process -FilePath $GpgPath -ArgumentList "--batch --passphrase $Password -c $($_.FullName)" -Wait -NoNewWindow
+				& $GpgPath --batch --passphrase $Password -c $_.FullName
 			}
 			Get-ChildItem -Path $FolderPath -Filter '*.gpg'
-		}
-		catch
-		{
+		} catch {
 			Write-Error $_.Exception.Message
 		}
 	}
 }
 
-function Remove-Encryption
-{
+function Remove-Encryption {
 	<#
 	.SYNOPSIS
 		This function decrypts all files encrypted with the Add-Encryption function. Once decrypted, it will add the files
@@ -165,25 +152,21 @@ function Remove-Encryption
 		[ValidateNotNullOrEmpty()]
 		[string]$GpgPath = 'C:\Program Files (x86)\GNU\GnuPG\gpg2.exe'
 	)
-	process
-	{
-		try
-		{
+	process {
+		try {
 			Get-ChildItem -Path $FolderPath -Filter '*.gpg' | foreach {
 				$decryptFilePath = $_.FullName.TrimEnd('.gpg')
 				Write-Verbose -Message "Decrypting [$($_.FullName)] to [$($decryptFilePath)]"
 				$startProcParams = @{
-					'FilePath' = $GpgPath
+					'FilePath'     = $GpgPath
 					'ArgumentList' = "--batch --yes --passphrase $Password -o $decryptFilePath -d $($_.FullName)" 
-					'Wait' = $true
-					'NoNewWindow' = $true
+					'Wait'         = $true
+					'NoNewWindow'  = $true
 				}
 				$null = Start-Process @startProcParams
 			}
 			Get-ChildItem -Path $FolderPath | where {$_.Extension -ne 'gpg'}
-		}
-		catch
-		{
+		} catch {
 			Write-Error $_.Exception.Message
 		}
 	}
