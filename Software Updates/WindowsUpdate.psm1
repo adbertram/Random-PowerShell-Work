@@ -644,7 +644,7 @@ function Wait-ScheduledTask {
 
 		.PARAMETER Timeout
 			 A optional integer parameter representing how long to wait for the scheduled task to complete. By default,
-			 it will wait 60 seconds.
+			 it will wait 1800 seconds.
 
 		.PARAMETER Credential
 			 Specifies a user account that has permission to perform this action. The default is the current user.
@@ -667,7 +667,7 @@ function Wait-ScheduledTask {
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[int]$Timeout = 300, ## seconds
+		[int]$Timeout = 1800, ## seconds
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
