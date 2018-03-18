@@ -368,6 +368,10 @@ function GetWindowsUpdateInstallResult {
 			'RebootRequired'
 			break
 		}
+		267009 {
+			'TimedOut'
+			break
+		}
 		default {
 			"Unknown exit code [$($_)]"
 		}
