@@ -174,6 +174,11 @@ function Install-WindowsUpdate {
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
+		[ValidateSet('MicrosoftUpdate')]
+		[string]$Source,
+
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
 		[switch]$ForceReboot,
 
 		[Parameter()]
@@ -183,18 +188,21 @@ function Install-WindowsUpdate {
 	begin {
 		$ErrorActionPreference = 'Stop'
 
-		$scheduledTaskName = 'EO Windows Update Install'
+		$scheduledTaskName = 'Windows Update Install'
 
 	}
 	process {
 		try {
-			$connParams = @{}
+			$getParams = @{}
 			if ($PSBoundParameters.ContainsKey('Credential')) {
-				$connParams.Credential = $Credential
+				$getParams.Credential = $Credential
+			}
+			if ($PSBoundParameters.ContainsKey('Source')) {
+				$getParams.Source = $Source
 			}
 			@($ComputerName).foreach({
-					$connParams.ComputerName = $_
-					if (-not (Get-WindowsUpdate @connParams)) {
+					$getParams.ComputerName = $_
+					if (-not (Get-WindowsUpdate @getParams)) {
 						Write-Verbose -Message 'No updates needed to install. Skipping computer...'
 					} else {
 						$installProcess = {
@@ -209,10 +217,13 @@ function Install-WindowsUpdate {
 								$session = New-PSSession @sessParams
 
 								$scriptBlock = {
-									$updateSession = New-Object -ComObject 'Microsoft.Update.Session';
-									$objSearcher = $updateSession.CreateUpdateSearcher();
+									$updateSession = New-Object -ComObject 'Microsoft.Update.Session'
+									$objSearcher = $updateSession.CreateUpdateSearcher()
+									if ($using:Source -eq 'MicrosoftUpdate') {
+										$objSearcher.ServerSelection = 3
+									}
 									if ($updates = ($objSearcher.Search('IsInstalled=0'))) {
-										$updates = $updates.Updates;
+										$updates = $updates.Updates
 
 										$downloader = $updateSession.CreateUpdateDownloader();
 										$downloader.Updates = $updates;
@@ -280,13 +291,13 @@ function Install-WindowsUpdate {
 							} catch {
 								$PSCmdlet.ThrowTerminatingError($_)
 							} finally {
-								Remove-ScheduledTask @connParams -Name $TaskName
+								Remove-ScheduledTask @getParams -Name $TaskName
 							}
 						}
 
 						$blockArgs = $_, $scheduledTaskName, $Credential, $ForceReboot.IsPresent
 						if ($AsJob.IsPresent) {
-							Start-Job -ScriptBlock $installProcess -Name "$_ - EO Windows Update Install" -ArgumentList $blockArgs
+							Start-Job -ScriptBlock $installProcess -Name "$_ - Windows Update Install" -ArgumentList $blockArgs
 						} else {
 							Invoke-Command -ScriptBlock $installProcess -ArgumentList $blockArgs
 						}
@@ -319,7 +330,7 @@ function GetWindowsUpdateInstallResult {
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$ScheduledTaskName = 'EO Windows Update Install'
+		[string]$ScheduledTaskName = 'Windows Update Install'
 	)
 
 	$sb = { (Get-ScheduledTask -TaskName $args[0] | Get-ScheduledTaskInfo).LastTaskResult }
@@ -327,27 +338,38 @@ function GetWindowsUpdateInstallResult {
 	switch -exact ($resultCode) {
 		0   {
 			'NotStarted'
+			break
 		}
 		1   {
 			'InProgress'
+			break
 		}
 		2   {
 			'Installed'
+			break
 		}
 		3   {
 			'InstalledWithErrors'
+			break
 		}
 		4   {
 			'Failed'
+			break
 		}
 		5   {
 			'Aborted'
+			break
 		}
 		6   {
 			'NoUpdatesNeeded'
+			break
 		}
 		7   {
 			'RebootRequired'
+			break
+		}
+		default {
+			"Unknown exit code [$($_)]"
 		}
 	}
 }
@@ -520,11 +542,11 @@ function Wait-WindowsUpdate {
 	(
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[int]$Timeout = 300
+		[int]$Timeout = 1800
 	)
 	process {
 		try {
-			if ($updateJobs = (Get-Job -Name '*EO Windows Update Install*').where({ $_.State -eq 'Running'})) {
+			if ($updateJobs = (Get-Job -Name '*Windows Update Install*').where({ $_.State -eq 'Running'})) {
 				$timer = Start-Timer
 				while ((Microsoft.PowerShell.Core\Get-Job -Id $updateJobs.Id | Where-Object { $_.State -eq 'Running' }) -and ($timer.Elapsed.TotalSeconds -lt $Timeout)) {
 					Write-Verbose -Message "Waiting for all Windows Update install background jobs to complete..."
