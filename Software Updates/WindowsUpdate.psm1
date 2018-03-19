@@ -337,7 +337,7 @@ function GetWindowsUpdateInstallResult {
 	$resultCode = Invoke-Command -Session $Session -ScriptBlock $sb -ArgumentList $ScheduledTaskName
 	switch -exact ($resultCode) {
 		0   {
-			'NotStarted'
+			'Installed'
 			break
 		}
 		1   {
