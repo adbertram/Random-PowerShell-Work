@@ -44,6 +44,7 @@
 				}
 				if (Test-Connection -ComputerName $comp -Count 1 -Quiet) {
 					$output.UserName = (Get-WmiObject -Class win32_computersystem -ComputerName $comp).UserName
+					$output.ComputerStatus = 'Online'
 				}
 				[pscustomobject]$output
 			}
