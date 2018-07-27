@@ -104,18 +104,20 @@ process {
 				Write-Verbose "Skipping the task $($Task.Name)"
 			} else {
 				## Skip a disabled task if the $SkipDisabledTasks param was set
-				if ((([xml]$Task.xml).Task.Settings.Enabled -eq 'false') -and $SkipDisabledTasks.IsPresent) {
+				$xTask = [xml]$Task.xml
+				if (($xTask.Task.Settings.Enabled -eq 'false') -and $SkipDisabledTasks.IsPresent) {
 					Write-Verbose "Skipping disabled task $($Task.Path)"
 				} else {
 					## Find the user in the scheduled tasks and perform a hash table lookup from the passwords gathered earlier
 					## to use for the password in the task created on $DestinationComputername
-					$User = ([xml]$Task.xml).Task.Principals.Principal.UserId
+					$User = $xTask.Task.Principals.Principal.UserId
 					$Password = $StoredCredentials[$User]
 					$Path = $Task.Path | Split-Path -Parent
 					## Use remoting to connect to the destination server.  I'm assuming this destination server is Win8+ or Win2012+ because
 					## I'm using Register-ScheduledTask
+					$taskName = $Task.Name
 					Invoke-Command -Session $DestSession -ScriptBlock {
-						Register-ScheduledTask -Xml $using:Task.Xml -TaskName $using:Task.Name -TaskPath $using:Path -User $using:User -Password $using:Password | Out-Null
+						Register-ScheduledTask -Xml $using:xTask -TaskName $using:taskName -TaskPath $using:Path -User $using:User -Password $using:Password | Out-Null
 					}
 				}
 			}
