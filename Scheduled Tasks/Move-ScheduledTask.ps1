@@ -59,7 +59,7 @@ begin {
 	try {
 		## Get all of the scheduled paths not intentionally excluded from the localhost
 		$SrcSchTasks = Get-MyScheduledTask | where { $ExcludePaths -notcontains $_.Path }
-		Write-Verbose "Found $($SrcSchTasks.Count) scheduled tasks on localhost to migrate"
+		Write-Verbose "Found $(@($SrcSchTasks).Count) scheduled tasks on localhost to migrate"
 		## If there's no scheduled tasks, exit
 		if (!$SrcSchTasks) {
 			throw "No scheduled tasks found on localhost"
@@ -86,7 +86,7 @@ begin {
 		
 		## Find all scheduled tasks on the destination server with the full path in order to not overwrite these later
 		$BeforeDestSchTasks = Get-MyScheduledTask -Computername $DestinationComputername | Select-Object -ExpandProperty Path
-		Write-Verbose "Found $($BeforeDestSchTasks.Count) scheduled tasks on destination computer pre-migration"
+		Write-Verbose "Found $(@($BeforeDestSchTasks).Count) scheduled tasks on destination computer pre-migration"
 		
 	} catch {
 		Write-Error $_.Exception.Message
