@@ -76,7 +76,7 @@ try
 					$_.TimeCreated -gt $LogonTime -and
 					$_.ID -in $SessionStopIds -and
 					(([xml]$_.ToXml()).Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text' -eq $LogonId
-				}) | select -First 1
+				}) | select -last 1
 				if (-not $SessionEndEvent) ## This be improved by seeing if this is the latest logon event
 				{
 					Write-Verbose -Message "Could not find a session end event for logon ID [$($LogonId)]. Assuming most current"
@@ -98,7 +98,7 @@ try
 						'Session Active (Days)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalDays, 2)
 						'Session Active (Min)' = [math]::Round((New-TimeSpan -Start $LogonTime -End $LogoffTime).TotalMinutes, 2)
 					}
-					[pscustomobject]$output
+					[pscustomobject]$output | ft -AutoSize -HideTableHeaders
 				}
 			}
 		})
