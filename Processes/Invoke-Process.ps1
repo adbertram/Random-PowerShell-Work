@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.4
+.VERSION 1.5
 
 .GUID b787dc5d-8d11-45e9-aeef-5cf3a1f690de
 
@@ -36,7 +36,7 @@ function Invoke-Process {
 
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string]$ArgumentList
+		[string[]]$ArgumentList
 	)
 
 	$ErrorActionPreference = 'Stop'
