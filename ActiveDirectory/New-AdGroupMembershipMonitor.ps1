@@ -1,3 +1,5 @@
+$script:monitorServer = 'SRV1'
+
 function New-AdGroupMembershipMonitor {
 	[OutputType('pscustomobject')]
 	[CmdletBinding(SupportsShouldProcess)]
