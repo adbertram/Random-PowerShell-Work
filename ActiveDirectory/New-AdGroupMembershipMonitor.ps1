@@ -130,3 +130,33 @@ function New-RecurringScheduledTask {
 	Invoke-Command @icmParams
 	
 }
+
+function Get-MonitorSchedule {
+	[OutputType('pscustomobject')]
+	[CmdletBinding(SupportsShouldProcess)]
+	param
+	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[ValidateSet('Daily', 'Weekly')]
+		[string]$Interval,
+
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$Time,
+
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[ValidateSet('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')]
+		[string]$DayOfWeek
+	)
+
+	$ErrorActionPreference = 'Stop'
+
+	[pscustomobject]@{
+		Interval  = $Interval
+		Time      = $Time
+		DayOfWeek = $DayOfWeek
+	}
+	
+}
