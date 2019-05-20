@@ -45,7 +45,7 @@ function Test-PendingReboot {
 			
 			# Query PendingFileRenameOperations from the registry
 			$icmParams.ScriptBlock = { Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name 'PendingFileRenameOperations' -ErrorAction SilentlyContinue }
-			$PendingReboot = InvokeCommandWithCred -Parameters $icmParams
+			$PendingReboot = Invoke-Command @icmParams
 			if ($PendingReboot -and $PendingReboot.PendingFileRenameOperations) {
 				Write-Verbose -Message 'Reboot pending in the PendingFileRenameOperations registry value'
 				$true
