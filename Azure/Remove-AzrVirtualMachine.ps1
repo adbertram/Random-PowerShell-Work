@@ -116,7 +116,7 @@ function Remove-AzrVirtualMachine {
 			}
 			
 			## Remove any other attached disks
-			if ($vm.DataDiskNames.Count -gt 0) {
+			if ('DataDiskNames' -in $vm.PSObject.Properties.Name -and @($vm.DataDiskNames).Count -gt 0) {
 				Write-Verbose -Message 'Removing data disks...'
 				foreach ($uri in $vm.StorageProfile.DataDisks.Vhd.Uri) {
 					$dataDiskStorageAcct = Get-AzStorageAccount -Name $uri.Split('/')[2].Split('.')[0]
