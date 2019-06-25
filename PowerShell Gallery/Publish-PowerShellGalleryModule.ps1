@@ -1,5 +1,4 @@
-function ShowMenu
-{
+function ShowMenu {
 	<#
 		.SYNOPSIS
 			A helper function to display a menu when a test fails.
@@ -39,8 +38,7 @@ function PromptChoice {
 	$host.ui.PromptForChoice($Title, $ChoiceMessage, $options, 0)
 }
 
-function GetRequiredManifestKeyParams
-{
+function GetRequiredManifestKeyParams {
 	<#
 		.SYNOPSIS
 			A helper function to retrieve values for the required manifest keys from the user.
@@ -54,14 +52,14 @@ function GetRequiredManifestKeyParams
 	(
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
-		[string[]]$RequiredKeys = @('Description','Version','ProjectUri','Author')
+		[string[]]$RequiredKeys = @('Description', 'Version', 'ProjectUri', 'Author')
 	)
 	
 	$paramNameMap = @{
-		Version = 'ModuleVersion'
+		Version     = 'ModuleVersion'
 		Description = 'Description'
-		Author = 'Author'
-		ProjectUri = 'ProjectUri'
+		Author      = 'Author'
+		ProjectUri  = 'ProjectUri'
 	}
 	$params = @{ }
 	foreach ($val in $RequiredKeys) {
@@ -80,7 +78,7 @@ function Invoke-Test {
 
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
-		[ValidateSet('Test','Fix')]
+		[ValidateSet('Test', 'Fix')]
 		[string]$Action,
 
 		[Parameter(Mandatory)]
@@ -88,8 +86,8 @@ function Invoke-Test {
 		[object]$Module
 	)
 	
-	$testHt = $moduleTests | where { $_.TestName -eq $TestName}
-	$actionName = '{0}{1}' -f $Action,'Action'
+	$testHt = $moduleTests | where { $_.TestName -eq $TestName }
+	$actionName = '{0}{1}' -f $Action, 'Action'
 	& $testHt.$actionName -Module $Module
 }
 
@@ -146,12 +144,12 @@ function Publish-PowerShellGalleryModule {
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[ValidateScript({
-			if (-not (Test-Path -Path $_ -PathType Leaf)) {
-				throw "The module $($_) could not be found."
-			} else {
-				$true
-			}
-		})]
+				if (-not (Test-Path -Path $_ -PathType Leaf)) {
+					throw "The module $($_) could not be found."
+				} else {
+					$true
+				}
+			})]
 		[string]$ModuleFilePath,
 
 		[Parameter()]
@@ -174,11 +172,11 @@ function Publish-PowerShellGalleryModule {
 	#>
 	$moduleTests = @(
 		@{
-			TestName = 'Module manifest exists'
-			Mandatory = $true
+			TestName       = 'Module manifest exists'
+			Mandatory      = $true
 			FailureMessage = 'The module manifest does not exist at the expected path.'
-			FixMessage = 'Run New-ModuleManifest to create a new manifest'
-			FixAction = { 
+			FixMessage     = 'Run New-ModuleManifest to create a new manifest'
+			FixAction      = { 
 				param($Module)
 
 				## Gather up all of the requuired key values from the user
@@ -189,7 +187,7 @@ function Publish-PowerShellGalleryModule {
 				Write-Verbose -Message "Running New-ModuleManifest with params: [$($newManParams | Out-String)]"
 				New-ModuleManifest @newManParams
 			}
-			TestAction = {
+			TestAction     = {
 				param($Module)
 
 				## Module path will always be the PSD1 since we're overriding the property earlier
@@ -201,11 +199,11 @@ function Publish-PowerShellGalleryModule {
 			}
 		}
 		@{
-			TestName = 'Manifest has all required keys'
-			Mandatory = $true
+			TestName       = 'Manifest has all required keys'
+			Mandatory      = $true
 			FailureMessage = 'The module manifest does not have all the required keys populated.'
-			FixMessage = 'Run Update-ModuleManifest to update existing manifest'
-			FixAction = { 
+			FixMessage     = 'Run Update-ModuleManifest to update existing manifest'
+			FixAction      = { 
 				param($Module)
 
 				## Have to get the module from the file system again here in case it was just created with New-ModuleManifest
@@ -213,7 +211,7 @@ function Publish-PowerShellGalleryModule {
 
 				## Gather up all of the keys required and their values and update the existing manifest.
 				$updateManParams = @{ Path = $Module.Path }
-				$missingKeys = ($Module.PsObject.Properties | Where-Object -FilterScript { $_.Name -in @('Description','Author','Version') -and (-not $_.Value) }).Name
+				$missingKeys = ($Module.PsObject.Properties | Where-Object -FilterScript { $_.Name -in @('Description', 'Author', 'Version') -and (-not $_.Value) }).Name
 				if ((-not $Module.LicenseUri) -and (-not $Module.PrivateData.PSData.ProjectUri)) {
 					$missingKeys += 'ProjectUri'
 				}
@@ -221,14 +219,14 @@ function Publish-PowerShellGalleryModule {
 				$updateManParams += GetRequiredManifestKeyParams -RequiredKeys $missingKeys
 				Update-ModuleManifest @updateManParams
 			}
-			TestAction = {
+			TestAction     = {
 				param($Module)
 
 				## Have to get the module again here to either update any new keys New-ModuleManifest just created or, since the 
 				## module was originally passed as a PSM1, it has no idea of an already existing manifest anyway.
 				$Module = Get-Module -Name $Module.Path -ListAvailable
 					
-				if ($Module.PsObject.Properties | Where-Object -FilterScript { $_.Name -in @('Description','Author','Version') -and (-not $_.Value) }) {
+				if ($Module.PsObject.Properties | Where-Object -FilterScript { $_.Name -in @('Description', 'Author', 'Version') -and (-not $_.Value) }) {
 					$false
 				} elseif ((-not $Module.LicenseUri) -and (-not $Module.PrivateData.PSData.ProjectUri)) {
 					$false
@@ -238,15 +236,15 @@ function Publish-PowerShellGalleryModule {
 			}
 		}
 		@{
-			TestName = 'Manifest passes Test-Modulemanifest validation'
-			Mandatory = $true
+			TestName       = 'Manifest passes Test-Modulemanifest validation'
+			Mandatory      = $true
 			FailureMessage = 'The module manifest does not pass validation with Test-ModuleManifest'
-			FixMessage = 'Run Test-ModuleManifest explicitly to investigate problems discovered'
-			FixAction = {
+			FixMessage     = 'Run Test-ModuleManifest explicitly to investigate problems discovered'
+			FixAction      = {
 				param($Module)
 				Test-ModuleManifest -Path $module.Path
 			}
-			TestAction = {
+			TestAction     = {
 				param($Module)
 				if (-not (Test-ModuleManifest -Path $Module.Path -ErrorAction SilentlyContinue)) {
 					$false
@@ -256,11 +254,11 @@ function Publish-PowerShellGalleryModule {
 			}
 		}
 		@{
-			TestName = 'Pester Tests Exists'
-			Mandatory = $false
+			TestName       = 'Pester Tests Exists'
+			Mandatory      = $false
 			FailureMessage = 'The module does not have any associated Pester tests.'
-			FixMessage = 'Create a new Pester test file using a common template'
-			FixAction = { 
+			FixMessage     = 'Create a new Pester test file using a common template'
+			FixAction      = { 
 				param($Module)
 
 				## Create a $ModuleName.Tests.ps1 file using a template inside of the module folder creating a Describe block
@@ -300,7 +298,7 @@ InModuleScope $ThisModuleName {{
 
 				Add-Content -Path $pesterTestPath -Value $pesterTestTemplate
 			}
-			TestAction = {
+			TestAction     = {
 				param($Module)
 
 				if (-not (Test-Path -Path "$($Module.ModuleBase)\$($Module.Name).Tests.ps1" -PathType Leaf)) {
@@ -336,8 +334,7 @@ a NuGet API key.
 		foreach ($test in ($moduleTests | where $whereFilter)) {
 			if (-not (Invoke-Test -TestName $test.TestName -Action 'Test' -Module $module)) {			
 				$result = ShowMenu -Title $test.FailureMessage -ChoiceMessage "Would you like to resolve this with action: [$($test.FixMessage)]?"
-				switch ($result)
-				{
+				switch ($result) {
 					0 {
 						Write-Verbose -Message 'Running fix action...'
 						Invoke-Test -TestName $test.TestName -Action 'Fix' -Module $module
@@ -358,8 +355,7 @@ a NuGet API key.
 			& $publishAction
 		} else {
 			$result = ShowMenu -Title 'PowerShell Gallery Publication' -ChoiceMessage 'All mandatory tests have passed. Publish it?'
-			switch ($result)
-			{
+			switch ($result) {
 				0 {
 					& $publishAction
 				}
