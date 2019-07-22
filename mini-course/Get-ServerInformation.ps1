@@ -1,7 +1,7 @@
 $serversOuPath = 'OU=Servers,DC=powerlab,DC=local'
 $servers = Get-ADComputer -SearchBase $serversOuPath -Filter * | Select-Object -ExpandProperty Name
 foreach ($server in $servers) {
-    $output = @{
+    $output = [ordered]@{
         'ServerName'                  = $null
         'IPAddress'                   = $null
         'OperatingSystem'             = $null
