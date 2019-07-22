@@ -35,7 +35,7 @@ $report = foreach ($server in $servers) {
     $output.ServerName = $server
 
     $userProfileSize = (Get-ChildItem -Path "\\$server\c$\Users\" -File -Recurse | Measure-Object -Property Length -Sum).Sum
-    $output.'UserProfilesSize (MB)' = $userProfileSize / 1GB
+    $output.'UserProfilesSize (MB)' = [math]::Round($userProfileSize / 1GB,1)
     
     $output.'AvailableDriveSpace (GB)' = Get-CimInstance @getCimInstParams -ClassName Win32_LogicalDisk | Select-Object -Property DeviceID, @{Name='FreeSpace'; Expression={ [Math]::Round(($_.Freespace / 1GB), 1) } }
     
