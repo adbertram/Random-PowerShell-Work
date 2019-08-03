@@ -36,7 +36,8 @@
 .EXAMPLE
 	PS> Test-PendingReboot
 	
-	This example checks various registry values to see if the local computer is pending a reboot.
+    This example checks various registry values to see if the local computer is pending a reboot.
+    
 #>
 [CmdletBinding()]
 param(
