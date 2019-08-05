@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.5
+.VERSION 1.6
 
 .GUID fe3d3698-52fc-40e8-a95c-bbc67a507ed1
 
@@ -36,8 +36,7 @@
 .EXAMPLE
 	PS> Test-PendingReboot
 	
-    This example checks various registry values to see if the local computer is pending a reboot.
-    
+	This example checks various registry values to see if the local computer is pending a reboot.
 #>
 [CmdletBinding()]
 param(
@@ -52,134 +51,130 @@ param(
 begin {
     $ErrorActionPreference = 'Stop'
 
-    function Test-RegistryKey {
-        [OutputType('bool')]
-        [CmdletBinding()]
-        param
-        (
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [string]$Key,
+    ## This is the scriptblock that's run on all servers
+    $remoteScriptblock = {
 
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [System.Management.Automation.Runspaces.PSSession]$Session
-        )
+        function Test-RegistryKey {
+            [OutputType('bool')]
+            [CmdletBinding()]
+            param
+            (
+                [Parameter(Mandatory)]
+                [ValidateNotNullOrEmpty()]
+                [string]$Key
+            )
     
-        $ErrorActionPreference = 'Stop'
+            $ErrorActionPreference = 'Stop'
 
-        Invoke-Command -Session $Session -ScriptBlock {
-            if (Get-Item -Path $using:Key -ErrorAction Ignore) {
+            if (Get-Item -Path $Key -ErrorAction Ignore) {
                 $true
             }
         }
-    }
 
-    function Test-RegistryValue {
-        [OutputType('bool')]
-        [CmdletBinding()]
-        param
-        (
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [System.Management.Automation.Runspaces.PSSession]$Session,
+        function Test-RegistryValue {
+            [OutputType('bool')]
+            [CmdletBinding()]
+            param
+            (
 
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [string]$Key,
+                [Parameter(Mandatory)]
+                [ValidateNotNullOrEmpty()]
+                [string]$Key,
 
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [string]$Value
-        )
+                [Parameter(Mandatory)]
+                [ValidateNotNullOrEmpty()]
+                [string]$Value
+            )
     
-        $ErrorActionPreference = 'Stop'
+            $ErrorActionPreference = 'Stop'
 
-        Invoke-Command -Session $Session -ScriptBlock {
-            if (Get-ItemProperty -Path $using:Key -Name $using:Value -ErrorAction Ignore) {
+            if (Get-ItemProperty -Path $Key -Name $Value -ErrorAction Ignore) {
                 $true
             }
         }
-    }
 
-    function Test-RegistryValueNotNull {
-        [OutputType('bool')]
-        [CmdletBinding()]
-        param
-        (
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [System.Management.Automation.Runspaces.PSSession]$Session,
+        function Test-RegistryValueNotNull {
+            [OutputType('bool')]
+            [CmdletBinding()]
+            param
+            (
 
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [string]$Key,
+                [Parameter(Mandatory)]
+                [ValidateNotNullOrEmpty()]
+                [string]$Key,
 
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [string]$Value
-        )
+                [Parameter(Mandatory)]
+                [ValidateNotNullOrEmpty()]
+                [string]$Value
+            )
     
-        $ErrorActionPreference = 'Stop'
+            $ErrorActionPreference = 'Stop'
 
-        Invoke-Command -Session $Session -ScriptBlock {
-            if (($regVal = Get-ItemProperty -Path $using:Key -Name $using:Value -ErrorAction Ignore) -and $regVal.($using:Value)) {
+            if (($regVal = Get-ItemProperty -Path $Key -Name $Value -ErrorAction Ignore) -and $regVal.($Value)) {
                 $true
             }
         }
+
+        $tests = @(
+            { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending' }
+            { Test-RegistryKey -Key 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootInProgress' }
+            { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired' }
+            { Test-RegistryKey -Key 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing\PackagesPending' }
+            { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\PostRebootReporting' }
+            { Test-RegistryValueNotNull -Key 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Value 'PendingFileRenameOperations' }
+            { Test-RegistryValueNotNull -Key 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Value 'PendingFileRenameOperations2' }
+            {
+                (Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\Updates') -and 
+                (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Updates' -Name 'UpdateExeVolatile' -ErrorAction Ignore | Select-Object -ExpandProperty UpdateExeVolatile) -ne 0
+            }
+            { Test-RegistryValue -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce' -Value 'DVDRebootSignal' }
+            { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\ServerManager\CurrentRebootAttemps' }
+            { Test-RegistryValue -Key 'HKLM:\SYSTEM\CurrentControlSet\Services\Netlogon' -Value 'JoinDomain' }
+            { Test-RegistryValue -Key 'HKLM:\SYSTEM\CurrentControlSet\Services\Netlogon' -Value 'AvoidSpnSet' }
+            {
+                (Test-RegistryValue -Key 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName' -Value 'ActiveComputerName') -and
+                (Test-RegistryValue -Key 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName' -Value 'ComputerName') -and
+                (
+                    (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName' -Name 'ActiveComputerName').ActiveComputerName -ne
+                    (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName' -Name 'ActiveComputerName').ComputerName
+                )
+            }
+            {
+                $knownFalsePositiveGuids = @('117cab2d-82b1-4b5a-a08c-4d62dbee7782')
+                if (Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Services\Pending' | Where-Object { $_.PSChildName -notin $knownfalsepositiveguids }) {
+                    $true
+                }
+            }
+        )
+
+        foreach ($test in $tests) {
+            if (& $test) {
+                $true
+                return
+            }
+        }
+        ## Return false if it hasn't returned yet
+        $false
     }
-
-    $tests = @(
-        { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending' }
-        { Test-RegistryKey -Key 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootInProgress' }
-        { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired' }
-        { Test-RegistryKey -Key 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing\PackagesPending' }
-        { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\PostRebootReporting' }
-        { Test-RegistryValueNotNull -Key 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Value 'PendingFileRenameOperations' }
-        { Test-RegistryValueNotNull -Key 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Value 'PendingFileRenameOperations2' }
-        { (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Updates' -Name 'UpdateExeVolatile' -ErrorAction Ignore | Select-Object -ExpandProperty UpdateExeVolatile) -ne 0 }
-        { Test-RegistryValue -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce' -Value 'DVDRebootSignal' }
-        { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\ServerManager\CurrentRebootAttemps' }
-        { Test-RegistryValue -Key 'HKLM:\SYSTEM\CurrentControlSet\Services\Netlogon' -Value 'JoinDomain' }
-        { Test-RegistryValue -Key 'HKLM:\SYSTEM\CurrentControlSet\Services\Netlogon' -Value 'AvoidSpnSet' }
-        {
-            (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName' -Name 'ActiveComputerName').ActiveComputerName -ne
-            (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName' -Name 'ActiveComputerName').ComputerName
-        }
-        {
-            if (Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Services\Pending') {
-                $true
-            }
-        }
-    )
 }
 process {
     try {
-        foreach ($computer in $ComputerName) {
-            $connParams = @{
-                'ComputerName' = $computer
-            }
-            if ($PSBoundParameters.ContainsKey('Credential')) {
-                $connParams.Credential = $Credential
-            }
+        $connParams = @{
+            'ComputerName' = $ComputerName
+        }
+        if ($PSBoundParameters.ContainsKey('Credential')) {
+            $connParams.Credential = $Credential
+        }
 
+        $results = Invoke-Command @connParams -ScriptBlock $remoteScriptblock
+        foreach ($result in $results) {
             $output = @{
-                ComputerName    = $computer
-                IsPendingReboot = $false
+                ComputerName    = $result.PSComputerName
+                IsPendingReboot = $result
             }
-
-            $psRemotingSession = New-PSSession @connParams
-            
-            foreach ($test in $tests) {
-                if (& $test) {
-                    $output.IsPendingReboot = $true
-                }
-                [pscustomobject]$output
-            }
+            [pscustomobject]$output
         }
     } catch {
         Write-Error -Message $_.Exception.Message
-    } finally {
-        $psRemotingSession | Remove-PSSession
     }
 }
