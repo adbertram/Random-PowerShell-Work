@@ -44,7 +44,7 @@ $scriptBlock = {
 
     $output.'Memory (GB)' = (Get-CimInstance -ClassName Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum /1GB
 
-    $output.'AvailableDriveSpace (GB)' = (Get-CimInstance -ComputerName $server -ClassName Win32_LogicalDisk | 
+    $output.'AvailableDriveSpace (GB)' = (Get-CimInstance -ClassName Win32_LogicalDisk | 
         Select-Object -Property DeviceID, @{Name='FreeSpace'; Expression={ [Math]::Round(($_.Freespace / 1GB), 1) } } |
             Measure-Object -Property FreeSpace -Sum).Sum
 
