@@ -26,7 +26,7 @@ $Header = @"
 
 $scriptBlock = {
     $output = @{
-        'ServerName'               = $null
+        'ServerName'               = (hostname)
         'IPAddress'                = $null
         'OperatingSystem'          = $null
         'AvailableDriveSpace (GB)' = $null
