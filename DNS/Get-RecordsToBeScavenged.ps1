@@ -156,7 +156,6 @@ process {
 			}
 		}
 		if ($EmailAddress) {
-			$EmailRecords = @([pscustomobject]@{ 'test'='dfdfdfd'}, [pscustomobject]@{ 'teddddst' = 'dfdfdddddfd' })
 			if ($EmailRecords.Count -eq 0) {
 				Write-Verbose "No stale records found to email"
 			} else {
