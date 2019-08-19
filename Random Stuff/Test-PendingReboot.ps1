@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.5
+.VERSION 1.6
 
 .GUID fe3d3698-52fc-40e8-a95c-bbc67a507ed1
 
@@ -11,7 +11,7 @@
 
 .COPYRIGHT 
 
-.DESCRIPTION This function tests various registry values to see if the local computer is pending a reboot.
+.DESCRIPTION This script tests various registry values to see if the local computer is pending a reboot.
 
 .TAGS 
 
@@ -30,14 +30,13 @@
 .RELEASENOTES
 
 .SYNOPSIS
-	This function tests various registry values to see if the local computer is pending a reboot
+	This script tests various registry values to see if the local computer is pending a reboot
 .NOTES
 	Inspiration from: https://gallery.technet.microsoft.com/scriptcenter/Get-PendingReboot-Query-bdb79542
 .EXAMPLE
-	PS> Test-PendingReboot
+	PS> Test-PendingReboot -ComputerName localhost
 	
-    This example checks various registry values to see if the local computer is pending a reboot.
-    
+	This example checks various registry values to see if the local computer is pending a reboot.
 #>
 [CmdletBinding()]
 param(
@@ -49,9 +48,10 @@ param(
     [ValidateNotNullOrEmpty()]
     [pscredential]$Credential
 )
-begin {
-    $ErrorActionPreference = 'Stop'
 
+$ErrorActionPreference = 'Stop'
+
+$scriptBlock = {
     function Test-RegistryKey {
         [OutputType('bool')]
         [CmdletBinding()]
@@ -59,19 +59,13 @@ begin {
         (
             [Parameter(Mandatory)]
             [ValidateNotNullOrEmpty()]
-            [string]$Key,
-
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
-            [System.Management.Automation.Runspaces.PSSession]$Session
+            [string]$Key
         )
     
         $ErrorActionPreference = 'Stop'
 
-        Invoke-Command -Session $Session -ScriptBlock {
-            if (Get-Item -Path $using:Key -ErrorAction Ignore) {
-                $true
-            }
+        if (Get-Item -Path $Key -ErrorAction Ignore) {
+            $true
         }
     }
 
@@ -82,10 +76,6 @@ begin {
         (
             [Parameter(Mandatory)]
             [ValidateNotNullOrEmpty()]
-            [System.Management.Automation.Runspaces.PSSession]$Session,
-
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
             [string]$Key,
 
             [Parameter(Mandatory)]
@@ -95,10 +85,8 @@ begin {
     
         $ErrorActionPreference = 'Stop'
 
-        Invoke-Command -Session $Session -ScriptBlock {
-            if (Get-ItemProperty -Path $using:Key -Name $using:Value -ErrorAction Ignore) {
-                $true
-            }
+        if (Get-ItemProperty -Path $Key -Name $Value -ErrorAction Ignore) {
+            $true
         }
     }
 
@@ -109,10 +97,6 @@ begin {
         (
             [Parameter(Mandatory)]
             [ValidateNotNullOrEmpty()]
-            [System.Management.Automation.Runspaces.PSSession]$Session,
-
-            [Parameter(Mandatory)]
-            [ValidateNotNullOrEmpty()]
             [string]$Key,
 
             [Parameter(Mandatory)]
@@ -122,10 +106,8 @@ begin {
     
         $ErrorActionPreference = 'Stop'
 
-        Invoke-Command -Session $Session -ScriptBlock {
-            if (($regVal = Get-ItemProperty -Path $using:Key -Name $using:Value -ErrorAction Ignore) -and $regVal.($using:Value)) {
-                $true
-            }
+        if (($regVal = Get-ItemProperty -Path $Key -Name $Value -ErrorAction Ignore) -and $regVal.($Value)) {
+            $true
         }
     }
 
@@ -152,31 +134,35 @@ begin {
             }
         }
     )
-}
-process {
-    try {
-        foreach ($computer in $ComputerName) {
-            $connParams = @{
-                'ComputerName' = $computer
-            }
-            if ($PSBoundParameters.ContainsKey('Credential')) {
-                $connParams.Credential = $Credential
-            }
 
-            $output = @{
-                ComputerName    = $computer
-                IsPendingReboot = $false
-            }
-
-            $psRemotingSession = New-PSSession @connParams
-            
-            foreach ($test in $tests) {
-                if (& $test) {
-                    $output.IsPendingReboot = $true
-                }
-                [pscustomobject]$output
-            }
+    foreach ($test in $tests) {
+        if (& $test) {
+            $true
+            break
         }
+    }
+}
+
+foreach ($computer in $ComputerName) {
+    try {
+        $connParams = @{
+            'ComputerName' = $computer
+        }
+        if ($PSBoundParameters.ContainsKey('Credential')) {
+            $connParams.Credential = $Credential
+        }
+
+        $output = @{
+            ComputerName    = $computer
+            IsPendingReboot = $false
+        }
+
+        $psRemotingSession = New-PSSession @connParams
+        
+        if (-not ($output.IsPendingReboot = Invoke-Command -Session $psRemotingSession -ScriptBlock $scriptBlock)) {
+            $output.IsPendingReboot = $false
+        }
+        [pscustomobject]$output
     } catch {
         Write-Error -Message $_.Exception.Message
     } finally {
