@@ -212,6 +212,7 @@ process
 			'Namespace' = 'root\MicrosoftDNS'
 		}
 		$DnsNodeObjectQueryParams = @{
+			## Some may need to replcae $IntegrationScope with 'System' here
 			'SearchBase' = "CN=MicrosoftDNS,DC=$IntegrationScope`DnsZones,$DomainDn"
 		}
 		
