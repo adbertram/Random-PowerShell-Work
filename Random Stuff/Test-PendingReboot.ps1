@@ -134,15 +134,13 @@ $scriptBlock = {
         {
             # Added test to check first if keys exists, if not each group will return $Null
             # May need to evaluate what it means if one or both of these keys do not exist
-            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName' | ?{ test-path $_  } | %{ (Get-ItemProperty -Path $_ ).ComputerName } ) -ne 
-            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName' | ?{ test-path $_  } | %{ (Get-ItemProperty -Path $_ ).ComputerName } )
+            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName' | ?{ test-path $_ } | %{ (Get-ItemProperty -Path $_ ).ComputerName } ) -ne 
+            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName' | ?{ test-path $_ } | %{ (Get-ItemProperty -Path $_ ).ComputerName } )
         }
         {
             # Added test to check first if key exists
-            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Services\Pending'| ?{ 
-                test-path $_ -and (Get-ChildItem -Path $_) } |%{
-                $true
-            }
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Services\Pending' | Where-Object { 
+                (Test-Path $_) -and (Get-ChildItem -Path $_) } | ForEach-Object { $true }
         }
     )
 
