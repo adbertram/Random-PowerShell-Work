@@ -68,8 +68,8 @@ function Remove-AzrVirtualMachine {
 				$vmResource = Get-AzResource @azResourceParams
 				$vmId = $vmResource.Properties.VmId
 				#endregion
-
-				$diagContainerName = ('bootdiagnostics-{0}-{1}' -f $vm.Name.ToLower().Substring(0, $i), $vmId)
+				$vmnameNoSpecialCharacters = $vm.name -replace '[^\p{L}\p{Nd}]', ''
+				$diagContainerName = ('bootdiagnostics-{0}-{1}' -f $vmnameNoSpecialCharacters.ToLower().Substring(0, $i), $vmId)
 				$diagSaRg = (Get-AzStorageAccount | where { $_.StorageAccountName -eq $diagSa }).ResourceGroupName
 				$saParams = @{
 					'ResourceGroupName' = $diagSaRg
