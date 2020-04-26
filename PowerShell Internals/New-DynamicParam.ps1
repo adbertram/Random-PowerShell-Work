@@ -10,24 +10,44 @@
 	DynamicParam {
 		$ParamOptions = @(
 		@{
-			'Name' = 'Right';
-			'Mandatory' = $true;
-			'ValidateSetOptions' = ([System.Security.AccessControl.FileSystemRights]).DeclaredMembers | where { $_.IsStatic } | select -ExpandProperty name
+			Name = 'Right'
+			ParameterAttributes = @(
+			@{
+				Mandatory = $true
+				# ParameterSetName = 'a'
+				# Position = 0
+				# ValueFromPipeline = $true
+				# ValueFromPipelinyByPropertyName = $true
+			}
+			)
+			ValidateSetOptions = ([System.Security.AccessControl.FileSystemRights]).DeclaredMembers | where { $_.IsStatic } | select -ExpandProperty name
 		},
 		@{
-			'Name' = 'InheritanceFlags';
-			'Mandatory' = $true;
-			'ValidateSetOptions' = ([System.Security.AccessControl.InheritanceFlags]).DeclaredMembers | where { $_.IsStatic } | select -ExpandProperty name
+			Name = 'InheritanceFlags'
+			ParameterAttributes = @(
+			@{
+				Mandatory = $true
+			}
+			)
+			ValidateSetOptions = ([System.Security.AccessControl.InheritanceFlags]).DeclaredMembers | where { $_.IsStatic } | select -ExpandProperty name
 		},
 		@{
-			'Name' = 'PropagationFlags';
-			'Mandatory' = $true;
-			'ValidateSetOptions' = ([System.Security.AccessControl.PropagationFlags]).DeclaredMembers | where { $_.IsStatic } | select -ExpandProperty name
+			Name = 'PropagationFlags'
+			ParameterAttributes = @(
+			@{
+				Mandatory = $true
+			}
+			)
+			ValidateSetOptions = ([System.Security.AccessControl.PropagationFlags]).DeclaredMembers | where { $_.IsStatic } | select -ExpandProperty name
 		},
 		@{
-			'Name' = 'Type';
-			'Mandatory' = $true;
-			'ValidateSetOptions' = ([System.Security.AccessControl.AccessControlType]).DeclaredMembers | where { $_.IsStatic } | select -ExpandProperty name
+			Name = 'Type'
+			ParameterAttributes = @(
+			@{
+				Mandatory = $true
+			}
+			)
+			ValidateSetOptions = ([System.Security.AccessControl.AccessControlType]).DeclaredMembers | where { $_.IsStatic } | select -ExpandProperty name
 		}
 		)
 		$RuntimeParamDic = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
@@ -69,8 +89,8 @@ function New-DynamicParameter
 		[ValidateNotNullOrEmpty()]
 		[type]$Type = [string],
 		
-		[ValidateNotNullOrEmpty()]
 		[Parameter()]
+		[ValidateNotNullOrEmpty()]
 		[array]$ValidateSetOptions,
 		
 		[Parameter()]
@@ -83,25 +103,21 @@ function New-DynamicParameter
 		[int[]]$ValidateRange,
 		
 		[Parameter()]
-		[switch]$Mandatory = $false,
-		
-		[Parameter()]
-		[string]$ParameterSetName = '__AllParameterSets',
-		
-		[Parameter()]
-		[switch]$ValueFromPipeline = $false,
-		
-		[Parameter()]
-		[switch]$ValueFromPipelineByPropertyName = $false
+		[Array] $ParameterAttributes
 	)
 	
 	$AttribColl = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-	$ParamAttrib = New-Object System.Management.Automation.ParameterAttribute
-	$ParamAttrib.Mandatory = $Mandatory.IsPresent
-	$ParamAttrib.ParameterSetName = $ParameterSetName
-	$ParamAttrib.ValueFromPipeline = $ValueFromPipeline.IsPresent
-	$ParamAttrib.ValueFromPipelineByPropertyName = $ValueFromPipelineByPropertyName.IsPresent
-	$AttribColl.Add($ParamAttrib)
+	Foreach ( $ParameterAttribute in $ParameterAttributes ) {
+		$ParamAttrib = New-Object System.Management.Automation.ParameterAttribute
+
+		$ParamAttrib.Mandatory = $ParameterAttribute.Mandatory
+		If ( $ParameterAttribute.Position ) { $ParamAttrib.Position = $ParameterAttribute.Position }
+		If ( $ParameterAttribute.ParameterSetName ) { $ParamAttrib.ParameterSetName = $ParameterAttribute.ParameterSetName }
+		$ParamAttrib.ValueFromPipeline = $ParameterAttribute.ValueFromPipeline
+		$ParamAttrib.ValueFromPipelineByPropertyName = $ParameterAttribute.ValueFromPipelineByPropertyName
+
+		$AttribColl.Add( $ParamAttrib )
+	}
 	if ($PSBoundParameters.ContainsKey('ValidateSetOptions'))
 	{
 		$AttribColl.Add((New-Object System.Management.Automation.ValidateSetAttribute($ValidateSetOptions)))
