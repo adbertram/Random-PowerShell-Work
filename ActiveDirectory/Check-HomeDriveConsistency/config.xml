@@ -1,0 +1,12 @@
+<HDriveCheck>
+    <!-- Drive Path UNC (\\server\share\) -->
+    <HDrivePath>\\server\homedrives$\</HDrivePath>
+    <!-- Drive Letter Capitalized w/ Colon (H:) -->
+    <HDriveLetter>H:</HDriveLetter>
+    <SecurityGroupDN>CN=Home Drive,OU=Groups,DC=ad,DC=contoso,DC=com</SecurityGroupDN>
+    <OUs>
+        <!--Action Options: ADD / REMOVE-->
+        <OU DN="OU=Full Time,OU=Users,DC=ad,DC=contoso,DC=com" Action="ADD" />
+        <OU DN="OU=Part Time,OU=Users,DC=ad,DC=contoso,DC=com" Action="REMOVE" />
+    </OUs>
+</HDriveCheck>
