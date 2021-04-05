@@ -46,12 +46,14 @@ try {
 		
     ## Build the insane XPath query for the security event log in order to query events as fast as possible
     $logonXPath = "Event[System[EventID=4624]] and Event[EventData[Data[@Name='TargetDomainName'] != 'Window Manager']] and Event[EventData[Data[@Name='TargetDomainName'] != 'NT AUTHORITY']] and (Event[EventData[Data[@Name='LogonType'] = '2']] or Event[EventData[Data[@Name='LogonType'] = '11']])"
-    $otherXpath = 'Event[System[({0})]]' -f "EventID=$(($ids.where({ $_ -ne '4624' })) -join ' or EventID=')"
+    $otherXpath = 'Event[System[({0})]]' -f "EventID=$((@($ids).where({ $_ -ne '4624' })) -join ' or EventID=')"
     $xPath = '({0}) or ({1})' -f $logonXPath, $otherXpath
 
     foreach ($computer in $ComputerName) {
         ## Query each computer's event logs using the Xpath filter
-        $events = Get-WinEvent -ComputerName $computer -LogName $logNames -FilterXPath $xPath
+        if (-not ($events = Get-WinEvent -ComputerName $computer -LogName $logNames -FilterXPath $xPath)) {
+	    Write-Warning -Message 'No logon events found'.
+	} else {
         Write-Verbose -Message "Found [$($events.Count)] events to look through"
 
         ## Set up the output object
@@ -71,55 +73,56 @@ try {
             ClassName = 'Win32_ComputerSystem'
         }
         if ($computer -ne $Env:COMPUTERNAME) {
-            $getGimInstanceParams.ComputerName = $computer
-        }
-        $loggedInUsers = Get-CimInstance @getGimInstanceParams | Select-Object -ExpandProperty UserName | foreach { $_.split('\')[1] }
-            
-        ## Find all user start activity events and begin parsing
-        $events.where({ $_.Id -in $sessionStartIds }).foreach({
-                try {
-                    $logonEvtId = $_.Id
-                    $output.StartAction = $sessionEvents.where({ $_.ID -eq $logonEvtId }).Label
-                    $xEvt = [xml]$_.ToXml()
+		    $getGimInstanceParams.ComputerName = $computer
+		}
+		$loggedInUsers = Get-CimInstance @getGimInstanceParams | Select-Object -ExpandProperty UserName | foreach { $_.split('\')[1] }
 
-                    ## Figure out the login session ID
-                    $output.Username = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetUserName' }).'#text'
-                    $logonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text'
-                    if (-not $logonId) {
-                        $logonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'LogonId' }).'#text'
-                    }
-                    $output.StartTime = $_.TimeCreated
-        
-                    Write-Verbose -Message "New session start event found: event ID [$($logonEvtId)] username [$($output.Username)] logonID [$($logonId)] time [$($output.StartTime)]"
-                    ## Try to match up the user activity end event with the start event we're processing
-                    if (-not ($sessionEndEvent = $Events.where({ ## If a user activity end event could not be found, assume the user is still logged on
-                                    $_.TimeCreated -gt $output.StartTime -and
-                                    $_.ID -in $sessionStopIds -and
-                                    (([xml]$_.ToXml()).Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text' -eq $logonId
-                                })) | select -last 1) {
-                        if ($output.UserName -in $loggedInUsers) {
-                            $output.StopTime = Get-Date
-                            $output.StopAction = 'Still logged in'
-                        } else {
-                            throw "Could not find a session end event for logon ID [$($logonId)]."
-                        }
-                    } else {
-                        ## Capture the user activity end time
-                        $output.StopTime = $sessionEndEvent.TimeCreated
-                        Write-Verbose -Message "Session stop ID is [$($sessionEndEvent.Id)]"
-                        $output.StopAction = $sessionEvents.where({ $_.ID -eq $sessionEndEvent.Id }).Label
-                    }
+		## Find all user start activity events and begin parsing
+		@($events).where({ $_.Id -in $sessionStartIds }).foreach({
+			try {
+			    $logonEvtId = $_.Id
+			    $output.StartAction = @($sessionEvents).where({ $_.ID -eq $logonEvtId }).Label
+			    $xEvt = [xml]$_.ToXml()
 
-                    $sessionTimespan = New-TimeSpan -Start $output.StartTime -End $output.StopTime
-                    $output.'Session Active (Days)' = [math]::Round($sessionTimespan.TotalDays, 2)
-                    $output.'Session Active (Min)'  = [math]::Round($sessionTimespan.TotalMinutes, 2)
-                    
-                    [pscustomobject]$output
-                } catch {
-                    Write-Warning -Message $_.Exception.Message
-                }
-            })
-    }
+			    ## Figure out the login session ID
+			    $output.Username = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetUserName' }).'#text'
+			    $logonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text'
+			    if (-not $logonId) {
+				$logonId = ($xEvt.Event.EventData.Data | where { $_.Name -eq 'LogonId' }).'#text'
+			    }
+			    $output.StartTime = $_.TimeCreated
+
+			    Write-Verbose -Message "New session start event found: event ID [$($logonEvtId)] username [$($output.Username)] logonID [$($logonId)] time [$($output.StartTime)]"
+			    ## Try to match up the user activity end event with the start event we're processing
+			    if (-not ($sessionEndEvent = @($Events).where({ ## If a user activity end event could not be found, assume the user is still logged on
+					    $_.TimeCreated -gt $output.StartTime -and
+					    $_.ID -in $sessionStopIds -and
+					    (([xml]$_.ToXml()).Event.EventData.Data | where { $_.Name -eq 'TargetLogonId' }).'#text' -eq $logonId
+					})) | select -last 1) {
+				if ($output.UserName -in $loggedInUsers) {
+				    $output.StopTime = Get-Date
+				    $output.StopAction = 'Still logged in'
+				} else {
+				    throw "Could not find a session end event for logon ID [$($logonId)]."
+				}
+			    } else {
+				## Capture the user activity end time
+				$output.StopTime = $sessionEndEvent.TimeCreated
+				Write-Verbose -Message "Session stop ID is [$($sessionEndEvent.Id)]"
+				$output.StopAction = @($sessionEvents).where({ $_.ID -eq $sessionEndEvent.Id }).Label
+			    }
+
+			    $sessionTimespan = New-TimeSpan -Start $output.StartTime -End $output.StopTime
+			    $output.'Session Active (Days)' = [math]::Round($sessionTimespan.TotalDays, 2)
+			    $output.'Session Active (Min)'  = [math]::Round($sessionTimespan.TotalMinutes, 2)
+
+			    [pscustomobject]$output
+			} catch {
+			    Write-Warning -Message $_.Exception.Message
+			}
+		    })
+	    }
+	}
 } catch {
     $PSCmdlet.ThrowTerminatingError($_)
 }
