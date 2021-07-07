@@ -53,7 +53,6 @@ $ErrorActionPreference = 'Stop'
 
 $scriptBlock = {
 
-    $VerbosePreference = $using:VerbosePreference
     function Test-RegistryKey {
         [OutputType('bool')]
         [CmdletBinding()]
@@ -157,24 +156,24 @@ $scriptBlock = {
 
 foreach ($computer in $ComputerName) {
     try {
-        $connParams = @{
-            'ComputerName' = $computer
-        }
-        if ($PSBoundParameters.ContainsKey('Credential')) {
-            $connParams.Credential = $Credential
-        }
+    	$output = @{
+		ComputerName    = $computer
+		IsPendingReboot = $false
+	}
+    	if ($computer -eq 'localhost') {
+		& $scriptBlock
+	} else {
+		$connParams = @{
+		    'ComputerName' = $computer
+		}
+		if ($PSBoundParameters.ContainsKey('Credential')) {
+		    $connParams.Credential = $Credential
+		}
 
-        $output = @{
-            ComputerName    = $computer
-            IsPendingReboot = $false
-        }
-
-        $psRemotingSession = New-PSSession @connParams
-        
-        if (-not ($output.IsPendingReboot = Invoke-Command -Session $psRemotingSession -ScriptBlock $scriptBlock)) {
-            $output.IsPendingReboot = $false
-        }
-        [pscustomobject]$output
+        	$psRemotingSession = New-PSSession @connParams
+        	$output.IsPendingReboot = Invoke-Command -Session $psRemotingSession -ScriptBlock $scriptBlock
+		[pscustomobject]$output
+	}
     } catch {
         Write-Error -Message $_.Exception.Message
     } finally {
