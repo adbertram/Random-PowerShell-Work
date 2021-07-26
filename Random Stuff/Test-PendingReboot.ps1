@@ -148,20 +148,11 @@ $scriptBlock = {
         }
     )
 
-    $needsReboot = $false
     foreach ($test in $tests) {
         if (& $test) {
-            $needsReboot = $true
-            #break
-            Write-Verbose "Running scriptblock: [$($test.ToString())] - TRUE"
+            $true
+            break
         }
-        else {
-            Write-Verbose "Running scriptblock: [$($test.ToString())] - false"            
-        }
-    }
-
-    if ($needsReboot) {
-        $true
     }
 }
 
