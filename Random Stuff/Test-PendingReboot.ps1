@@ -149,6 +149,7 @@ $scriptBlock = {
     )
 
     foreach ($test in $tests) {
+        Write-Verbose "Running scriptblock: [$($test.ToString())]"
         if (& $test) {
             $true
             break
@@ -189,11 +190,9 @@ foreach ($computer in $ComputerName) {
             }
         }
         [pscustomobject]$output
-    }
-    catch {
+    } catch {
         Write-Error -Message $_.Exception.Message
-    }
-    finally {
+    } finally {
         if (Get-Variable -Name 'psRemotingSession' -ErrorAction Ignore) {
             $psRemotingSession | Remove-PSSession
         }
