@@ -1,7 +1,6 @@
-
 <#PSScriptInfo
 
-.VERSION 1.10
+.VERSION 1.11
 
 .GUID fe3d3698-52fc-40e8-a95c-bbc67a507ed1
 
@@ -40,7 +39,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
+    # ComputerName is optional. If not specified, localhost is used.
     [ValidateNotNullOrEmpty()]
     [string[]]$ComputerName,
 	
@@ -52,6 +51,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $scriptBlock = {
+    if ($null -ne $using) {
+        # $using is only available if this is being called with a remote session
+        $VerbosePreference = $using:VerbosePreference
+    }
 
     function Test-RegistryKey {
         [OutputType('bool')]
@@ -135,8 +138,8 @@ $scriptBlock = {
         {
             # Added test to check first if keys exists, if not each group will return $Null
             # May need to evaluate what it means if one or both of these keys do not exist
-            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName' | Where-Object { test-path $_ } | %{ (Get-ItemProperty -Path $_ ).ComputerName } ) -ne 
-            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName' | Where-Object { Test-Path $_ } | %{ (Get-ItemProperty -Path $_ ).ComputerName } )
+            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName' | Where-Object { test-path $_ } | % { (Get-ItemProperty -Path $_ ).ComputerName } ) -ne 
+            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName' | Where-Object { Test-Path $_ } | % { (Get-ItemProperty -Path $_ ).ComputerName } )
         }
         {
             # Added test to check first if key exists
@@ -154,26 +157,39 @@ $scriptBlock = {
     }
 }
 
+# if ComputerName was not specified, then use localhost 
+# to ensure that we don't create a Session.
+if ($null -eq $ComputerName) {
+    $ComputerName = "localhost"
+}
+
 foreach ($computer in $ComputerName) {
     try {
-    	$output = @{
-		ComputerName    = $computer
-		IsPendingReboot = $false
-	}
-    	if ($computer -eq 'localhost') {
-		& $scriptBlock
-	} else {
-		$connParams = @{
-		    'ComputerName' = $computer
-		}
-		if ($PSBoundParameters.ContainsKey('Credential')) {
-		    $connParams.Credential = $Credential
-		}
+        $connParams = @{
+            'ComputerName' = $computer
+        }
+        if ($PSBoundParameters.ContainsKey('Credential')) {
+            $connParams.Credential = $Credential
+        }
 
-        	$psRemotingSession = New-PSSession @connParams
-        	$output.IsPendingReboot = Invoke-Command -Session $psRemotingSession -ScriptBlock $scriptBlock
-		[pscustomobject]$output
-	}
+        $output = @{
+            ComputerName    = $computer
+            IsPendingReboot = $false
+        }
+
+        if ($computer -in ".", "localhost", $env:COMPUTERNAME ) {        
+            if (-not ($output.IsPendingReboot = Invoke-Command -ScriptBlock $scriptBlock)) {
+                $output.IsPendingReboot = $false
+            }
+        }
+        else {
+            $psRemotingSession = New-PSSession @connParams
+        
+            if (-not ($output.IsPendingReboot = Invoke-Command -Session $psRemotingSession -ScriptBlock $scriptBlock)) {
+                $output.IsPendingReboot = $false
+            }
+        }
+        [pscustomobject]$output
     } catch {
         Write-Error -Message $_.Exception.Message
     } finally {
