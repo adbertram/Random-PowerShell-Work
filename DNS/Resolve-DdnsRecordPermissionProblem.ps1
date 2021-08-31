@@ -26,7 +26,7 @@
 .PARAMETER IntegrationScope
 	This is the DNS integration type.  This can either be Forest and Domain.
 .PARAMETER DhcpServiceAccount
-	This is the account that client's that can't update their own record allow the DHCP server to do.
+	This is the account to be used for client's that can't update their own record and allow the DHCP server to do so.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 [OutputType()]
@@ -101,7 +101,7 @@ process
 			'Namespace' = 'root\MicrosoftDNS'
 		}
 		$DnsNodeObjectQueryParams = @{
-			## Some may need to replcae $IntegrationScope with 'System' here
+			## Some may need to replace $IntegrationScope with 'System' here
 			'SearchBase' = "CN=MicrosoftDNS,DC=$IntegrationScope`DnsZones,$DomainDn"
 		}
 		
@@ -121,8 +121,8 @@ process
 		
 		## Find all dynamic DNS records in the zone.  The output has to be trimmed to 15 characters to make a match on the AD object below
 		Write-Verbose -Message "Gathering dynamic records on the '$DnsServer' server in the '$Zone' zone"
-		## I must query the records directly instead of just finding the AD objects because I need the timestamp valuec
-		$DynamicDnsRecords = (Get-WmiObject @DnsRecordQueryParams | Select-Object -ExpandProperty OwnerName).Trim(".$Zone") | ForEach-Object { $_.SubString(0, [math]::Min(15, $_.Length)) }
+		## I must query the records directly instead of just finding the AD objects because I need the timestamp values
+        $DynamicDnsRecords = (Get-WmiObject @DnsRecordQueryParams | Where-Object {$_.DomainName -eq $Zone}).OwnerName -replace "`.$Zone$","" | ForEach-Object { $_.SubString(0, [math]::Min(15, $_.Length)) }
 		Write-Verbose -Message "Found $(($DynamicDnsRecords | measure -sum -ea SilentlyContinue).Count) dynamic DNS records in the '$Zone' zone"
 		
 		## Find all AD dnsNode objects in the specified zone that correspond to a dynamic DNS record
@@ -140,7 +140,7 @@ process
 				$Acl = Get-Acl -Path "ActiveDirectory:://RootDSE/$($DnsNodeObject.DistinguishedName)"
 				## Put together all the possible valid accounts that should be the owner and should have Modify or Full Control access to the DNS record object
 				## This can either be the computer account itself or the DHCP service account
-				$ValidAceIdentities = @("$($Domain.NetBIOSName)\$RecordName</code>$", "$($Domain.NetBIOSName)\$DhcpServiceAccount")
+				$ValidAceIdentities = @("$($Domain.NetBIOSName)\$RecordName$", "$($Domain.NetBIOSName)\$DhcpServiceAccount")
 				if ($ValidAceIdentities -notcontains $Acl.Owner)
 				{
 					Write-Warning -Message "ACL owner '$($Acl.Owner)' for object '$RecordName' is not valid"
