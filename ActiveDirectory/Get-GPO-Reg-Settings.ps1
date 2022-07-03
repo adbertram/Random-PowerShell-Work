@@ -1,28 +1,31 @@
+#$ErrorActionPreference = "SilentlyContinue"
+$error.PSBase.Clear()
+
+$aRegRoots = @('HKCU\Software','HKLM\System','HKLM\Software');
+$aGpos = Get-Gpo -All;
+$aUniqueSettings = @();
+$aUniqueDups = @();
+
 function findRegValues($sName,$sId,$sKeyPath,$aKeyPathHistory = $null) {
-	$aPath = Get-GPRegistryValue -GUID $sId -Key $sKeyPath
-	$aKeyPathHistory = @()
-	$aUniqueSettings = @()
-	$aUniqueDups = @()
-	
+	$aPath = Get-GPRegistryValue -GUID $sId -Key $sKeyPath -ErrorAction 'silentlycontinue'
+	$aKeyPathHistory = @();
 	foreach ($oKeyPath in $aPath) {
 		if ($oKeyPath) {
-			if ('Value' -in $oKeyPath.PSObject.Properties.Name) {
+			if (Test-Member $oKeyPath Value) {
 				if ($aKeyPathHistory -notcontains $oKeyPath.FullKeyPath) {
-					$o = @{
-						'GUID' = $sId
-						'Name' = $sName
-						'Key' = $sKeyPath
-						'Value' = $oKeyPath.Value
-					}
+					$o = New-Object System.Object;
+					$o | Add-Member -type NoteProperty -Name 'GUID' -Value $sId;
+					$o | Add-Member -type NoteProperty -Name 'Name' -Value $sName;
+					$o | Add-Member -type NoteProperty -Name 'Key' -Value $sKeyPath;
+					$o | Add-Member -type NoteProperty -Name 'Value' -Value $oKeyPath.Value;
 					if ($aUniqueSettings -notcontains "$sKeyPath|$($oKeyPath.Value)") {
 						$aUniqueSettings += "$sKeyPath|$($oKeyPath.Value)";
 					} elseif ($aUniqueDups -notcontains "$sKeyPath|$($oKeyPath.Value)") {
-						$o.Value = "$sName|$sKeyPath|$($oKeyPath.Value)";
+						"$sName|$sKeyPath|$($oKeyPath.Value)";
 						$aUniqueDups += "$sKeyPath|$($oKeyPath.Value)";
 					}
-					[pscustomobject]$o
 				}
-			} elseif ('FullKeyPath' -in $oKeyPath.PSObject.Properties.Name) {
+			} elseif (Test-Member $oKeyPath FullKeyPath) {
 				$aKeyPathHistory += $oKeyPath.FullKeyPath;
 				findRegValues $sName $sId $oKeyPath.FullKeyPath $aKeyPathHistory
 			}
@@ -30,10 +33,12 @@ function findRegValues($sName,$sId,$sKeyPath,$aKeyPathHistory = $null) {
 	}
 }
 
-$aRegRoots = @('HKCU\Software','HKLM\System','HKLM\Software')
+$aRegValues = @();
 
-foreach ($oGpo in (Get-Gpo -All)) {
+foreach ($oGpo in $aGpos) {
+	$sGuid = $oGpo.Id;
+	$sName = $oGpo.DisplayName;
 	foreach ($sRegRoot in $aRegRoots) {
-		findRegValues $oGpo.DisplayName $oGpo.Id $sRegRoot
+		findRegValues $sName $sGuid $sRegRoot
 	}
 }
