@@ -5,7 +5,7 @@ function Set-RegistryValueForAllUsers {
         for all users on a computer. If the key path doesn't exist to the value, it will automatically create the key and add the value.
     .EXAMPLE
         PS&gt; Set-RegistryValueForAllUsers -RegistryInstance @{'Name' = 'Setting'; 'Type' = 'String'; 'Value' = 'someval'; 'Path' = 'SOFTWARE\Microsoft\Windows\Something'}
-
+    
         This example would modify the string registry value 'Type' in the path 'SOFTWARE\Microsoft\Windows\Something' to 'someval'
         for every user registry hive.
     .PARAMETER RegistryInstance
@@ -26,7 +26,7 @@ function Set-RegistryValueForAllUsers {
     )
     try {
         New-PSDrive -Name HKU -PSProvider Registry -Root Registry::HKEY_USERS | Out-Null
-
+        
         ## Change the registry values for the currently logged on user. Each logged on user SID is under HKEY_USERS
         $LoggedOnSids = (Get-ChildItem HKU: | Where-Object { $_.Name -match 'S-\d-\d+-(\d+-){1,14}\d+'}).PSChildName
         Write-Verbose "Found $($LoggedOnSids.Count) logged on user SIDs"
@@ -39,7 +39,7 @@ function Set-RegistryValueForAllUsers {
                 Set-ItemProperty -Path "HKU:\$sid\$($instance.Path)" -Name $instance.Name -Value $instance.Value -Type $instance.Type -Force
             }
         }
-
+        
         ## Create the Active Setup registry key so that the reg add cmd will get ran for each user
         ## logging into the machine.
         ## http://www.itninja.com/blog/view/an-active-setup-primer
@@ -52,7 +52,7 @@ function Set-RegistryValueForAllUsers {
             New-Item -Path $ActiveSetupRegParentPath -Name $Guid -Force | Out-Null
             $ActiveSetupRegPath = "HKLM:\Software\Microsoft\Active Setup\Installed Components\$Guid"
             Write-Verbose "Using registry path '$ActiveSetupRegPath'"
-
+            
             ## Convert the registry value type to one that reg.exe can understand.  This will be the
             ## type of value that's created for the value we want to set for all users
             switch ($instance.Type) {
@@ -75,7 +75,7 @@ function Set-RegistryValueForAllUsers {
                     throw "Registry type '$($instance.Type)' not recognized"
                 }
             }
-
+            
             ## Build the registry value to use for Active Setup which is the command to create the registry value in all user hives
             $ActiveSetupValue = 'reg add {0} /v {1} /t {2} /d {3} /f' -f "HKCU\$($instance.Path)".Trim('\'), $instance.Name, $RegValueType, $instance.Value
             Write-Verbose -Message "Active setup value is '$ActiveSetupValue'"

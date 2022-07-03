@@ -6,12 +6,12 @@
 	.EXAMPLE
 		PS> Import-Certificate -Location LocalMachine -StoreName My -FilePath C:\certificate.cer
 
-		This example will import the certificate.cert certificate into the Personal store for the
+		This example will import the certificate.cert certificate into the Personal store for the 
 		local computer
 	.EXAMPLE
 		PS> Import-Certificate -Location CurrentUser -StoreName TrustedPublisher -FilePath C:\certificate.cer
 
-		This example will import the certificate.cer certificate into the Trusted Publishers store for the
+		This example will import the certificate.cer certificate into the Trusted Publishers store for the 
 		currently logged on user
 	.PARAMETER Location
 	 	This is the location (either CurrentUser or LocalMachine) where the store is located which the certificate
@@ -27,16 +27,16 @@
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
 		[string]$ComputerName = $env:COMPUTERNAME,
-
+		
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
 		[pscredential]$Credential,
-
+		
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[ValidateSet('CurrentUser', 'LocalMachine')]
 		[string]$Location,
-
+		
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[ValidateScript({
@@ -50,7 +50,7 @@
 			}
 		})]
 		[string]$StoreName,
-
+		
 		[Parameter(Mandatory)]
 		[string]$FilePath
 	)
@@ -73,10 +73,10 @@
 				param (
 					[Parameter()]
 					[string]$FilePath,
-
+					
 					[Parameter()]
 					[string]$Location,
-
+					
 					[Parameter()]
 					[string]$StoreName
 				)
