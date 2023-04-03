@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.11
+.VERSION 1.13
 
 .GUID fe3d3698-52fc-40e8-a95c-bbc67a507ed1
 
@@ -8,23 +8,23 @@
 
 .COMPANYNAME Adam the Automator, LLC
 
-.COPYRIGHT 
+.COPYRIGHT
 
 .DESCRIPTION This script tests various registry values to see if the local computer is pending a reboot.
 
-.TAGS 
+.TAGS
 
-.LICENSEURI 
+.LICENSEURI
 
-.PROJECTURI 
+.PROJECTURI
 
-.ICONURI 
+.ICONURI
 
-.EXTERNALMODULEDEPENDENCIES 
+.EXTERNALMODULEDEPENDENCIES
 
-.REQUIREDSCRIPTS 
+.REQUIREDSCRIPTS
 
-.EXTERNALSCRIPTDEPENDENCIES 
+.EXTERNALSCRIPTDEPENDENCIES
 
 .RELEASENOTES
 
@@ -34,18 +34,20 @@
 	Inspiration from: https://gallery.technet.microsoft.com/scriptcenter/Get-PendingReboot-Query-bdb79542
 .EXAMPLE
 	PS> Test-PendingReboot -ComputerName localhost
-	
+
 	This example checks various registry values to see if the local computer is pending a reboot.
 #>
 [CmdletBinding()]
 param(
-    # ComputerName is optional. If not specified, localhost is used.
+    [Parameter(HelpMessage = 'Optional parameter. If omitted, "localhost" (the local machine) is inferred. If not working locally, the target machine must have PS remoting enabled and winrm running.')]
     [ValidateNotNullOrEmpty()]
-    [string[]]$ComputerName,
-	
+    [string[]] $ComputerName = 'localhost',
+
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [pscredential]$Credential
+    [pscredential] $Credential,
+
+    [switch] $ExpandResultForSingleComputer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -65,7 +67,7 @@ $scriptBlock = {
             [ValidateNotNullOrEmpty()]
             [string]$Key
         )
-    
+
         $ErrorActionPreference = 'Stop'
 
         if (Get-Item -Path $Key -ErrorAction Ignore) {
@@ -86,7 +88,7 @@ $scriptBlock = {
             [ValidateNotNullOrEmpty()]
             [string]$Value
         )
-    
+
         $ErrorActionPreference = 'Stop'
 
         if (Get-ItemProperty -Path $Key -Name $Value -ErrorAction Ignore) {
@@ -107,7 +109,7 @@ $scriptBlock = {
             [ValidateNotNullOrEmpty()]
             [string]$Value
         )
-    
+
         $ErrorActionPreference = 'Stop'
 
         if (($regVal = Get-ItemProperty -Path $Key -Name $Value -ErrorAction Ignore) -and $regVal.($Value)) {
@@ -125,13 +127,13 @@ $scriptBlock = {
         { Test-RegistryKey -Key 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\PostRebootReporting' }
         { Test-RegistryValueNotNull -Key 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Value 'PendingFileRenameOperations' }
         { Test-RegistryValueNotNull -Key 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Value 'PendingFileRenameOperations2' }
-        { 
+        {
             # Added test to check first if key exists, using "ErrorAction ignore" will incorrectly return $true
-            'HKLM:\SOFTWARE\Microsoft\Updates' | Where-Object { test-path $_ -PathType Container } | ForEach-Object {
-                if(Test-Path "$_\UpdateExeVolatile" ){ 
-                    (Get-ItemProperty -Path $_ -Name 'UpdateExeVolatile' | Select-Object -ExpandProperty UpdateExeVolatile) -ne 0 
-                }else{ 
-                    $false 
+            'HKLM:\SOFTWARE\Microsoft\Updates' | Where-Object { Test-Path $_ -PathType Container } | ForEach-Object {
+                if (Test-Path "$_\UpdateExeVolatile" ) {
+                    (Get-ItemProperty -Path $_ -Name 'UpdateExeVolatile' | Select-Object -ExpandProperty UpdateExeVolatile) -ne 0
+                } else {
+                    $false
                 }
             }
         }
@@ -142,12 +144,12 @@ $scriptBlock = {
         {
             # Added test to check first if keys exists, if not each group will return $Null
             # May need to evaluate what it means if one or both of these keys do not exist
-            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName' | Where-Object { test-path $_ } | % { (Get-ItemProperty -Path $_ ).ComputerName } ) -ne 
-            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName' | Where-Object { Test-Path $_ } | % { (Get-ItemProperty -Path $_ ).ComputerName } )
+            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName' | Where-Object { Test-Path $_ } | ForEach-Object { (Get-ItemProperty -Path $_ ).ComputerName } ) -ne
+            ( 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName' | Where-Object { Test-Path $_ } | ForEach-Object { (Get-ItemProperty -Path $_ ).ComputerName } )
         }
         {
             # Added test to check first if key exists
-            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Services\Pending' | Where-Object { 
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Services\Pending' | Where-Object {
                 (Test-Path $_) -and (Get-ChildItem -Path $_) } | ForEach-Object { $true }
         }
     )
@@ -159,12 +161,6 @@ $scriptBlock = {
             break
         }
     }
-}
-
-# if ComputerName was not specified, then use localhost 
-# to ensure that we don't create a Session.
-if ($null -eq $ComputerName) {
-    $ComputerName = "localhost"
 }
 
 foreach ($computer in $ComputerName) {
@@ -181,19 +177,22 @@ foreach ($computer in $ComputerName) {
             IsPendingReboot = $false
         }
 
-        if ($computer -in ".", "localhost", $env:COMPUTERNAME ) {        
+        if ($computer -iin @('.', 'localhost', '127.0.0.1', $env:COMPUTERNAME) ) {
             if (-not ($output.IsPendingReboot = Invoke-Command -ScriptBlock $scriptBlock)) {
                 $output.IsPendingReboot = $false
             }
-        }
-        else {
+        } else {
             $psRemotingSession = New-PSSession @connParams
-        
+
             if (-not ($output.IsPendingReboot = Invoke-Command -Session $psRemotingSession -ScriptBlock $scriptBlock)) {
                 $output.IsPendingReboot = $false
             }
         }
-        [pscustomobject]$output
+        if ((1 -eq $ComputerName.Count) -and $ExpandResultForSingleComputer) {
+            $output.IsPendingReboot
+        } else {
+            [pscustomobject]$output
+        }
     } catch {
         Write-Error -Message $_.Exception.Message
     } finally {
