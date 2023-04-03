@@ -39,13 +39,13 @@
 #>
 [CmdletBinding()]
 param(
-    # ComputerName is optional. If not specified, localhost is used.
+    [Parameter(HelpMessage = 'Optional parameter. If omitted, "localhost" (the local machine) is inferred. If not working locally, the target machine must have PS remoting enabled and winrm running.')]
     [ValidateNotNullOrEmpty()]
-    [string[]]$ComputerName,
+    [string[]] $ComputerName = 'localhost',
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [pscredential]$Credential
+    [pscredential] $Credential
 )
 
 $ErrorActionPreference = 'Stop'
@@ -161,12 +161,6 @@ $scriptBlock = {
     }
 }
 
-# if ComputerName was not specified, then use localhost
-# to ensure that we don't create a Session.
-if ($null -eq $ComputerName) {
-    $ComputerName = 'localhost'
-}
-
 foreach ($computer in $ComputerName) {
     try {
         $connParams = @{
@@ -181,7 +175,7 @@ foreach ($computer in $ComputerName) {
             IsPendingReboot = $false
         }
 
-        if ($computer -in '.', 'localhost', $env:COMPUTERNAME ) {
+        if ($computer -iin @('.', 'localhost', '127.0.0.1', $env:COMPUTERNAME) ) {
             if (-not ($output.IsPendingReboot = Invoke-Command -ScriptBlock $scriptBlock)) {
                 $output.IsPendingReboot = $false
             }
