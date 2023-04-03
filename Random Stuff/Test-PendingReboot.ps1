@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.12
+.VERSION 1.13
 
 .GUID fe3d3698-52fc-40e8-a95c-bbc67a507ed1
 
@@ -45,7 +45,9 @@ param(
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [pscredential] $Credential
+    [pscredential] $Credential,
+
+    [switch] $ExpandResultForSingleComputer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -186,7 +188,11 @@ foreach ($computer in $ComputerName) {
                 $output.IsPendingReboot = $false
             }
         }
-        [pscustomobject]$output
+        if ((1 -eq $ComputerName.Count) -and $ExpandResultForSingleComputer) {
+            $output.IsPendingReboot
+        } else {
+            [pscustomobject]$output
+        }
     } catch {
         Write-Error -Message $_.Exception.Message
     } finally {
