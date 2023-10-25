@@ -122,7 +122,14 @@ process
 		## Find all dynamic DNS records in the zone.  The output has to be trimmed to 15 characters to make a match on the AD object below
 		Write-Verbose -Message "Gathering dynamic records on the '$DnsServer' server in the '$Zone' zone"
 		## I must query the records directly instead of just finding the AD objects because I need the timestamp values
-        $DynamicDnsRecords = (Get-WmiObject @DnsRecordQueryParams | Where-Object {$_.DomainName -eq $Zone}).OwnerName -replace "`.$Zone$","" | ForEach-Object { $_.SubString(0, [math]::Min(15, $_.Length)) }
+        	$DynamicDnsRecords = foreach ($record in (Get-WmiObject @DnsRecordQueryParams | Where-Object {$_.DomainName -eq $Zone})) {
+	 		if ('OwnerName' in $record.PSObject.Properties.Name) {
+				$record.OwnerName -replace "`.$Zone$","" | ForEach-Object { $_.SubString(0, [math]::Min(15, $_.Length)) }
+			} else {
+				Write-Warning "A owner could not be found on DNS record for IP [$($record.IPAddress)]! It's timestamp is 0 so it should??"
+   			}
+  		}
+	 
 		Write-Verbose -Message "Found $(($DynamicDnsRecords | measure -sum -ea SilentlyContinue).Count) dynamic DNS records in the '$Zone' zone"
 		
 		## Find all AD dnsNode objects in the specified zone that correspond to a dynamic DNS record
