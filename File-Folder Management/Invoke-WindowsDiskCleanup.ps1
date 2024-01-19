@@ -102,7 +102,7 @@ foreach ($keyName in $Section) {
 	$newItemParams = @{
 		Path         = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches\$keyName"
 		Name         = 'StateFlags0001'
-		Value        = 1
+		Value        = 2
 		PropertyType = 'DWord'
 		ErrorAction  = 'SilentlyContinue'
 	}
