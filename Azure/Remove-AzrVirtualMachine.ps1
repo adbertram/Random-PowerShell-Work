@@ -113,6 +113,7 @@ function Remove-AzrVirtualMachine {
 			} else {
 				## managed
 				Get-AzDisk | where { $_.ManagedBy -eq $vm.Id } | Remove-AzDisk -Force
+				Get-AzDisk | Where-Object { $_.id -eq $vm.StorageProfile.OsDisk.ManagedDisk.Id } | Remove-AzDisk -Force
 			}
 			
 			## Remove any other attached disks
@@ -122,6 +123,11 @@ function Remove-AzrVirtualMachine {
 					$dataDiskStorageAcct = Get-AzStorageAccount -Name $uri.Split('/')[2].Split('.')[0]
 					$dataDiskStorageAcct | Remove-AzStorageBlob -Container $uri.Split('/')[-2] -Blob $uri.Split('/')[-1]
 				}
+			}
+			Else {
+                		foreach ($disk in $vm.StorageProfile.DataDisks) {
+                    			Remove-AzDisk -DiskName $Disk.name -ResourceGroupName $vm.ResourceGroupName -Force
+                		}
 			}
 		}
 			
