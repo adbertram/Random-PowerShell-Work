@@ -61,5 +61,5 @@ if (-not (Get-Module -Name xSqlServer -ListAvailable)) {
 	Install-Module -Name 'xSqlServer' -Confirm:$false
 }
 
-SQLStandAlone -SetupCredential (Get-Credential) -WindowServerSource '' -SqlServerInstallSource '' -SysAdminAccount '' -ConfigurationData '.\ConfiguraitonData.psd1'
+SQLStandAlone -SetupCredential (Get-Credential) -WindowServerSource '' -SqlServerInstallSource '' -SysAdminAccount '' -ConfigurationData '.\ConfigurationData.psd1'
 Start-DscConfiguration –Wait –Force –Path '.\SQLStandalone' –Verbose
